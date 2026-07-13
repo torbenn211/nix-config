@@ -62,12 +62,15 @@ in
 
   ############################################################
   #
-  # Boot & Kernel
+  # Boot & Kernel (Gaming Optimized)
   #
   ############################################################
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
   boot.kernelPackages = pkgs.linuxPackages_latest;
+
+  # Unlocks AMD GPU power profiles and forces amdgpu to use high performance.
+  boot.kernelParams = [ "amdgpu.ppfeaturemask=0xffffffff" "amdgpu.performance_level=high" ];
 
   # Advanced: Cleans /tmp on every boot to prevent junk buildup.
   boot.tmp.cleanOnBoot = true;
@@ -170,6 +173,9 @@ in
     enable = true;
     desktopManager.xterm.enable = false;
 
+    # Forces the system to use the dedicated AMD driver.
+    videoDrivers = [ "amdgpu" ];
+
     # Keyboard repeat rate: 650ms delay, 50 repeats per second.
     autoRepeatDelay = 650;
     autoRepeatInterval = 50;
@@ -199,6 +205,35 @@ in
 
   ############################################################
   #
+  # Gaming Performance (Gamemode)
+  #
+  ############################################################
+  # Configures Gamemode to maximize CPU and GPU performance automatically in games.
+  programs.gamemode = {
+    enable = true;
+    settings = {
+      general = {
+        renice = 10;
+      };
+      cpu = {
+        gov = "performance";
+      };
+      gpu = {
+        amd_performance_level = "high";
+      };
+    };
+  };
+
+  ############################################################
+  #
+  # Shell (Bash) - Auto-run Fastfetch
+  #
+  ############################################################
+  # Automatically runs fastfetch every time you open Kitty.
+  programs.bash.interactiveShellInit = "fastfetch";
+
+  ############################################################
+  #
   # Display Manager (Login Screen)
   #
   ############################################################
@@ -210,6 +245,49 @@ in
   # Dotfiles Management (System-wide)
   #
   ############################################################
+
+  # --- Fastfetch Configuration (1990s Retro Green Style) ---
+  environment.etc."xdg/fastfetch/config.jsonc".text = ''
+    {
+      "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
+      "logo": {
+        "source": "nixos",
+        "padding": {
+          "top": 1,
+          "left": 1,
+          "right": 3
+        }
+      },
+      "display": {
+        "separator": " -> ",
+        "color": {
+          "keys": "2"
+        }
+      },
+      "modules": [
+        "title",
+        "separator",
+        "os",
+        "kernel",
+        "uptime",
+        "packages",
+        "shell",
+        "display",
+        "de",
+        "wm",
+        "theme",
+        "icons",
+        "terminal",
+        "cpu",
+        "gpu",
+        "memory",
+        "swap",
+        "disk",
+        "localip",
+        "locale"
+      ]
+    }
+  '';
 
   # --- i3 Status Bar Configuration ---
   # Removed CPU temp and GPU temp as requested. Kept CPU usage.
@@ -604,7 +682,7 @@ in
   hardware.graphics.enable32Bit = true;
 
   programs.steam.enable = true;
-  programs.gamemode.enable = true;
+  # programs.gamemode is configured above in the Gaming Performance section.
 
   ############################################################
   #
@@ -676,9 +754,12 @@ in
     usbutils
 
     # --- Gaming ---
+    corectrl # AMD GPU/CPU overclocking and monitoring
+    dxvk # DirectX to Vulkan translation for Wine/Proton
     gamescope
     mangohud
     protonup-qt
+    vinegar # Modern Roblox launcher for Linux
     wine
     winetricks
 
@@ -745,5 +826,5 @@ in
   ############################################################
   system.stateVersion = "26.05";
 
-  ## v1.4
+  ## v1.5
 }
