@@ -792,6 +792,7 @@ in
     xdotool
     xsel
     xss-lock
+    coolercontrol.coolercontrol-gui
 
     # --- Custom Scripts ---
     # Included here so it gets added to your system profile,
