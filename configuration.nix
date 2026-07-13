@@ -788,6 +788,7 @@ in
     polkit_gnome
     rofi
     vesktop
+    discord
     xclip
     xdotool
     xsel
