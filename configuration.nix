@@ -466,9 +466,9 @@ in
     bindsym $mod+Ctrl+w exec --no-startup-id ${kittyBin} -e ${nmtuiBin}
 
     # Window Management
-    # Super+W forces an instant kill (SIGKILL) so no apps ask for confirmation.
-    bindsym $mod+w exec --no-startup-id sh -c 'kill -9 $(${xdotoolBin} getwindowfocus getwindowpid)'
-    # Super+Q is a polite close (lets apps save data).
+    # Super+W is a normal, polite window close (lets apps ask for confirmation).
+    bindsym $mod+w kill
+    # Super+Q is an alternative close using xdotool.
     bindsym $mod+q exec --no-startup-id ${xdotoolBin} getwindowfocus windowkill
 
     bindsym Ctrl+Mod1+Delete exec i3-msg [class=".*"] kill
@@ -616,7 +616,8 @@ in
             status_command ${i3statusBin} -c /etc/xdg/i3status.conf
             position bottom
             font pango:Monocraft 10
-            tray_output none
+            # Changed from 'none' to 'primary' to enable the system tray
+            tray_output primary
             workspace_buttons yes
 
             colors {
@@ -826,5 +827,5 @@ in
   ############################################################
   system.stateVersion = "26.05";
 
-  ## v1.5
+  ## v1.7
 }
