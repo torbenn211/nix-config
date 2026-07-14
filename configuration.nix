@@ -8,7 +8,7 @@
 # It defines everything from your boot loader to your desktop environment,
 # software, and dotfiles. Everything is contained in this one file.
 
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 
 let
   # Define absolute paths to binaries. This is the Nix way to ensure
@@ -34,6 +34,9 @@ let
   nmAppletBin = "${pkgs.networkmanagerapplet}/bin/nm-applet";
   dexBin = "${pkgs.dex}/bin/dex";
   xssLockBin = "${pkgs.xss-lock}/bin/xss-lock";
+  picomBin = "${pkgs.picom}/bin/picom";
+  gamescopeBin = "${pkgs.gamescope}/bin/gamescope";
+  steamBin = "${pkgs.steam}/bin/steam";
 
   # Custom Rofi wrapper script defined inline so we can inject its absolute path
   # directly into i3, bypassing any $PATH issues.
@@ -62,26 +65,69 @@ in
 
   ############################################################
   #
-  # Boot & Kernel (Gaming Optimized)
+  # Boot & Kernel (Deep-Search Gaming Optimized)
   #
   ############################################################
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
+  boot.loader.timeout = 1; # Speeds up boot process
+
   boot.kernelPackages = pkgs.linuxPackages_latest;
 
-  # Unlocks AMD GPU power profiles and forces amdgpu to use high performance.
-  boot.kernelParams = [ "amdgpu.ppfeaturemask=0xffffffff" "amdgpu.performance_level=high" ];
+  # Unlocks AMD GPU power profiles, forces amdgpu to high performance, disables CPU security mitigations,
+  # disables kernel watchdog (saves CPU), fixes Wine split_lock micro-stutters, and forces full kernel preemption for low latency.
+  boot.kernelParams = [ 
+    "amdgpu.ppfeaturemask=0xffffffff" 
+    "amdgpu.performance_level=high" 
+    "mitigations=off"
+    "nowatchdog"
+    "split_lock_detect=off"
+    "preempt=full"
+  ];
+
+  # Add tcp_bbr for lower network latency
+  boot.kernelModules = [ "tcp_bbr" "amdgpu" ];
 
   # Advanced: Cleans /tmp on every boot to prevent junk buildup.
   boot.tmp.cleanOnBoot = true;
+
+  # Kernel Sysctl Tuning: Aggressive RAM/Cache/Network management for gaming.
+  boot.kernel.sysctl = {
+    "vm.swappiness" = 10;
+    "vm.vfs_cache_pressure" = 50;
+    "vm.dirty_background_ratio" = 5; # Prevents background disk writes from stuttering games
+    "vm.dirty_ratio" = 10;           # Forces disk writes to happen sooner, avoiding long freezes
+    "vm.min_free_kbytes" = 262144;   # Reserves 256MB of RAM strictly for critical system processes
+    "vm.watermark_boost_factor" = 0; # Prevents kswapd from stuttering the system
+    "net.core.default_qdisc" = "fq";
+    "net.ipv4.tcp_congestion_control" = "bbr";
+  };
+
+  ############################################################
+  #
+  # SCX Scheduler (Blazing Fast Gaming CPU Scheduler)
+  #
+  ############################################################
+  # Uses sched_ext to prioritize games and audio over background tasks.
+  services.scx = {
+    enable = true;
+    scheduler = "scx_rustland";
+  };
 
   ############################################################
   #
   # Advanced System Optimizations (Reddit Gold)
   #
   ############################################################
+  # KSM (Kernel Same-page Merging): Saves RAM by merging identical memory pages.
+  hardware.ksm.enable = true;
+
   # ZRAM: Compresses RAM memory instead of using the swap file.
-  zramSwap.enable = true;
+  zramSwap = {
+    enable = true;
+    algorithm = "zstd"; # Fastest compression algorithm
+    memoryPercent = 100; # Allow ZRAM to use up to 100% of RAM if needed
+  };
 
   # SSD Optimization: Runs a weekly TRIM to keep your SSD fast and healthy.
   services.fstrim.enable = true;
@@ -94,6 +140,45 @@ in
 
   # Nix Flakes: Enables modern Nix command and Flakes.
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
+
+  # Nix Daemon Tuning: Background Nix builds run at lowest CPU priority so they never stutter your games.
+  nix.daemonIOSchedClass = "idle";
+  nix.daemonCPUSchedPolicy = "idle";
+
+  # RAM Saver: Disables the massive NixOS package database background service
+  programs.command-not-found.enable = false;
+
+  # RAM Saver: Disables building and storing system manuals in memory
+  documentation.nixos.enable = false;
+
+  # RAM & CPU Saver: Replaces legacy D-Bus with a high-performance implementation
+  services.dbus.implementation = "broker";
+
+  ############################################################
+  #
+  # Gaming Environment Variables (FPS Boosts)
+  #
+  ############################################################
+  # Forces AMD to use RADV (Mesa) instead of AMDVLK, which is much faster for gaming.
+  # Enables Fsync and Esync in Wine/Proton to drastically increase FPS and reduce stutter.
+  environment.sessionVariables = {
+    AMD_VULKAN_ICD = "RADV";
+    WINEESYNC = "1";
+    WINEFSYNC = "1";
+  };
+
+  ############################################################
+  #
+  # Real-Time Process Priorities (PAM Limits)
+  #
+  ############################################################
+  # Allows Gamemode and Pipewire to request real-time CPU scheduling for zero audio crackling and smoother frame pacing.
+  security.pam.loginLimits = [
+    { domain = "@wheel"; item = "rtprio"; type = "-"; value = 99; }
+    { domain = "@wheel"; item = "memlock"; type = "-"; value = "unlimited"; }
+    { domain = "@audio"; item = "rtprio"; type = "-"; value = 99; }
+    { domain = "@audio"; item = "memlock"; type = "-"; value = "unlimited"; }
+  ];
 
   ############################################################
   #
@@ -196,8 +281,10 @@ in
       options = "caps:none";
     };
 
+    # Enables FreeSync / VRR for smooth gaming if your monitor supports it.
     deviceSection = ''
       Option "TearFree" "true"
+      Option "VariableRefresh" "true"
     '';
   };
 
@@ -214,6 +301,8 @@ in
     settings = {
       general = {
         renice = 10;
+        softrealtime = "on"; # Allows the game to request soft real-time scheduling
+        inhibit_screensaver = 1; # Prevents screen from turning off during gameplay
       };
       cpu = {
         gov = "performance";
@@ -226,9 +315,22 @@ in
 
   ############################################################
   #
-  # Shell (Bash) - Auto-run Fastfetch
+  # CoolerControl (Fan & GPU Control)
   #
   ############################################################
+  # Enables the background daemon and installs the GUI automatically.
+  programs.coolercontrol.enable = true;
+
+  ############################################################
+  #
+  # Shell Aliases & Auto-run Fastfetch
+  #
+  ############################################################
+  # Alias so you can just type 'rebuild' instead of 'sudo nixos-rebuild switch'
+  environment.shellAliases = {
+    rebuild = "sudo nixos-rebuild switch";
+  };
+
   # Automatically runs fastfetch every time you open Kitty.
   programs.bash.interactiveShellInit = "fastfetch";
 
@@ -245,6 +347,18 @@ in
   # Dotfiles Management (System-wide)
   #
   ############################################################
+
+  # --- Picom Compositor Configuration (Fixes Tearing & Video FPS) ---
+  environment.etc."xdg/picom.conf".text = ''
+    backend = "glx";
+    vsync = true;
+    # use-damage makes Picom only redraw parts of the screen that change, saving CPU/GPU.
+    use-damage = true;
+    # No shadows, fading, or transparency to keep the pure black Omarchy aesthetic
+    shadow = false;
+    fading = false;
+    inactive-dim = 0;
+  '';
 
   # --- Fastfetch Configuration (1990s Retro Green Style) ---
   environment.etc."xdg/fastfetch/config.jsonc".text = ''
@@ -441,11 +555,13 @@ in
     exec --no-startup-id ${xrandrBin} --output HDMI-1 --mode 1920x1080 --rate 74.97 --right-of DP-1
 
     # ============================================================
-    # Window Rules & Appearance
+    # Window Rules & Appearance (Omarchy Minimal)
     # ============================================================
     floating_modifier $mod
     default_border pixel 2
     default_floating_border pixel 2
+    # smart_borders removes borders when there's only one window on the screen
+    smart_borders on
     gaps inner 0
     gaps outer 0
 
@@ -475,12 +591,27 @@ in
     bindsym $mod+t floating toggle
     bindsym $mod+f fullscreen toggle
     bindsym $mod+Mod1+f resize set 100 ppt 100 ppt
+    
+    # Omarchy Layout Binds
+    # Super+J toggles split direction (horizontal/vertical)
     bindsym $mod+j split toggle
-    bindsym $mod+g layout toggle split tabbed stacking
+    # Super+L toggles between dwindle (split) and scrolling (tabbed/stacking) layouts
+    bindsym $mod+l layout toggle split tabbed stacking
+    # Super+P toggles pseudo window style (switches split orientation)
+    bindsym $mod+p layout toggle split
+    # Super+G forces window grouping (tabbed layout)
+    bindsym $mod+g layout tabbed
+    
     bindsym $mod+o sticky toggle; floating toggle
 
     bindsym $mod+Escape exec "i3-nagbar -t warning -m 'System Menu' -B 'Lock' '${i3lockBin} -c 000000' -B 'Suspend' 'systemctl suspend' -B 'Reboot' 'systemctl reboot' -B 'Poweroff' 'systemctl poweroff'"
     bindsym $mod+Ctrl+l exec --no-startup-id ${i3lockBin} -c 000000
+
+    # ============================================================
+    # Gaming Shortcuts
+    # ============================================================
+    # Launch Steam inside Gamescope for a flawless, stutter-free 180Hz fullscreen experience
+    bindsym $mod+Shift+g exec --no-startup-id ${gamescopeBin} -W 1920 -H 1080 -r 180 -- ${steamBin} -tenfoot
 
     # ============================================================
     # Workspace Bindings
@@ -601,6 +732,7 @@ in
     exec --no-startup-id ${nmAppletBin}
     exec --no-startup-id ${dunstBin}
     exec --no-startup-id ${xsetrootBin} -solid black
+    exec --no-startup-id ${picomBin} --config /etc/xdg/picom.conf
     exec --no-startup-id /run/current-system/sw/libexec/polkit-gnome-authentication-agent-1
 
     # ============================================================
@@ -682,6 +814,13 @@ in
   hardware.graphics.enable = true;
   hardware.graphics.enable32Bit = true;
 
+  # Extra Vulkan and Video Decoding packages for AMD.
+  # The base mesa package (included by default) already provides the VA-API driver.
+  hardware.graphics.extraPackages = with pkgs; [
+    libva-vdpau-driver
+    libvdpau-va-gl
+  ];
+
   programs.steam.enable = true;
   # programs.gamemode is configured above in the Gaming Performance section.
 
@@ -702,7 +841,7 @@ in
   users.users."torbenn" = {
     isNormalUser = true;
     description = "torbenn";
-    extraGroups = [ "networkmanager" "wheel" ];
+    extraGroups = [ "networkmanager" "wheel" "audio" ];
   };
 
   ############################################################
@@ -747,26 +886,27 @@ in
     btop
     fastfetch
     htop
+    libva-utils
     lsof
+    mesa-demos
     ncdu
     pciutils
+    radeontop
     strace
     tree
     usbutils
-    killall
-    radeontop
     vulkan-tools
-    libva-utils
-    mesa-demos
+    killall
 
     # --- Gaming ---
     corectrl # AMD GPU/CPU overclocking and monitoring
     dxvk # DirectX to Vulkan translation for Wine/Proton
     gamescope
+    lutris # Game launcher for GOG, Epic, and Wine games
     mangohud
     protonup-qt
     vinegar # Modern Roblox launcher for Linux
-    wine
+    wineWowPackages.stable # 32/64-bit Wine required by Lutris (Ignore the warning, let it finish!)
     winetricks
     noriskclient-launcher
 
@@ -774,6 +914,7 @@ in
     adwaita-qt
     brightnessctl
     dex
+    discord
     dunst
     feh
     flameshot
@@ -784,16 +925,15 @@ in
     networkmanagerapplet
     papirus-icon-theme
     pavucontrol
+    picom # The compositor that fixes screen tearing and smooths animations
     playerctl
     polkit_gnome
     rofi
     vesktop
-    discord
     xclip
     xdotool
     xsel
     xss-lock
-    coolercontrol.coolercontrol-gui
 
     # --- Custom Scripts ---
     # Included here so it gets added to your system profile,
@@ -834,5 +974,5 @@ in
   ############################################################
   system.stateVersion = "26.05";
 
-  ## v1.7
+  ## v3.0
 }
