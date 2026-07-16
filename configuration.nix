@@ -1,12 +1,9 @@
 # configuration.nix
 ############################################################
 #
-# System Configuration & Dotfiles (TUI Edition)
+# System Configuration & Dotfiles (Ultimate Unixporn Edition)
 #
 ############################################################
-# This is the master configuration file for your NixOS system.
-# It defines everything from your boot loader to your desktop environment,
-# software, and dotfiles. Everything is contained in this one file.
 
 { config, pkgs, lib, ... }:
 
@@ -47,9 +44,8 @@ let
   ncspotBin = "${pkgs.ncspot}/bin/ncspot";
 
   # --- Custom Scripts ---
-  # Rofi wrapper with Catppuccin Macchiato styling
   rofiMenuScript = pkgs.writeShellScriptBin "rofi-menu" ''
-    exec ${rofiBin} -show drun -show-icons -font "Monocraft 10" -icon-theme "Papirus-Dark" \
+    exec ${rofiBin} -show drun -show-icons -font "JetBrainsMono Nerd Font 10" -icon-theme "Papirus-Dark" \
       -drun-display-format "{name}" -disable-history -hide-scrollbar \
       -theme-str 'window { background-color: #24273a; border: 2px; border-color: #363a4f; border-radius: 8px; padding: 12px; width: 30%; }' \
       -theme-str 'mainbox { background-color: #24273a; spacing: 0px; }' \
@@ -64,7 +60,26 @@ let
   '';
   rofiMenuBin = "${rofiMenuScript}/bin/rofi-menu";
 
-  # Rofi Power Menu
+  # Rofi Keybind Cheatsheet
+  showKeysScript = pkgs.writeShellScriptBin "show-keys" ''
+    ${rofiBin} -dmenu -i -p "Keybinds" -theme-str 'window {width: 40%;}' <<EOF
+    Super + Enter       Terminal
+    Super + Shift + Enter Browser
+    Super + D           App Launcher
+    Super + N           File Manager (Yazi)
+    Super + W           Kill Window
+    Super + Z           Terminal Scratchpad
+    Super + P           Python REPL Scratchpad
+    Super + M           System Monitor (btop)
+    Super + G           Git TUI (Lazygit)
+    Super + O           Jump to Monitor 2
+    Super + F1          Show this menu
+    Super + F11         Lock Screen
+    Super + Shift + P   Power Menu
+    EOF
+  '';
+  showKeysBin = "${showKeysScript}/bin/show-keys";
+
   powerMenuScript = pkgs.writeShellScriptBin "power-menu" ''
     options="Lock\nSuspend\nReboot\nPoweroff\nLogout"
     selected=$(echo -e "$options" | ${rofiBin} -dmenu -p "Power" -theme-str 'window {width: 15%;} entry {placeholder: "Select...";}')
@@ -78,7 +93,6 @@ let
   '';
   powerMenuBin = "${powerMenuScript}/bin/power-menu";
 
-  # Blur lock screen script
   lockScript = pkgs.writeShellScriptBin "blur-lock" ''
     ${xsetrootBin} -solid "#24273a"
     ${pkgs.scrot}/bin/scrot /tmp/lock.png
@@ -88,7 +102,7 @@ let
   '';
   lockBin = "${lockScript}/bin/blur-lock";
 
-  # Scratchpad Terminal Toggle
+  # Scratchpad Toggles
   scratchTermScript = pkgs.writeShellScriptBin "scratch-term" ''
     if [ $(${i3statusBin} -t get_tree | ${jqBin} -r '.nodes[].nodes[].nodes[].window_properties.class' | grep -c "scratch_term") -gt 0 ]; then
       i3-msg "[class=\"scratch_term\"] scratchpad show"
@@ -98,7 +112,6 @@ let
   '';
   scratchTermBin = "${scratchTermScript}/bin/scratch-term";
 
-  # Python REPL Toggle
   scratchPythonScript = pkgs.writeShellScriptBin "scratch-python" ''
     if [ $(${i3statusBin} -t get_tree | ${jqBin} -r '.nodes[].nodes[].nodes[].window_properties.class' | grep -c "scratch_python") -gt 0 ]; then
       i3-msg "[class=\"scratch_python\"] scratchpad show"
@@ -108,7 +121,6 @@ let
   '';
   scratchPythonBin = "${scratchPythonScript}/bin/scratch-python";
 
-  # btop Toggle
   scratchBtopScript = pkgs.writeShellScriptBin "scratch-btop" ''
     if [ $(${i3statusBin} -t get_tree | ${jqBin} -r '.nodes[].nodes[].nodes[].window_properties.class' | grep -c "scratch_btop") -gt 0 ]; then
       i3-msg "[class=\"scratch_btop\"] scratchpad show"
@@ -118,7 +130,6 @@ let
   '';
   scratchBtopBin = "${scratchBtopScript}/bin/scratch-btop";
 
-  # Wallpaper Downloader & Setter
   setWallpaperScript = pkgs.writeShellScriptBin "set-wallpaper" ''
     WP_DIR="$HOME/.local/share"
     WP_FILE="$WP_DIR/wallpaper.jpg"
@@ -134,13 +145,13 @@ in
   imports = [ ./hardware-configuration.nix ];
 
   ############################################################
-  # Boot & Kernel (Gaming Optimized)
+  # Boot & Kernel (Gaming Optimized & Riced)
   ############################################################
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
-  boot.loader.timeout = 3; # 3 seconds for dual-boot selection
-  
+  boot.loader.timeout = 3;
   boot.loader.systemd-boot.configurationLimit = 5;
+  boot.loader.systemd-boot.consoleMode = "max"; # Riced boot resolution
 
   boot.kernelPackages = pkgs.linuxPackages_latest;
   boot.kernelParams = [ 
@@ -166,23 +177,14 @@ in
     "net.ipv4.tcp_congestion_control" = "bbr";
   };
 
-  ############################################################
-  # BOOT FIX: Disable Network Wait
-  ############################################################
   systemd.services.NetworkManager-wait-online.enable = false;
   systemd.services.systemd-udev-settle.enable = false;
 
-  ############################################################
-  # SCX Scheduler (Blazing Fast Gaming CPU Scheduler)
-  ############################################################
   services.scx = {
     enable = true;
     scheduler = "scx_bpfland";
   };
 
-  ############################################################
-  # System Optimizations
-  ############################################################
   hardware.ksm.enable = true;
   zramSwap = { enable = true; algorithm = "zstd"; memoryPercent = 100; };
   services.fstrim.enable = true;
@@ -200,14 +202,12 @@ in
   documentation.nixos.enable = false;
   services.dbus.implementation = "broker";
 
-  ############################################################
-  # Environment Variables
-  ############################################################
   environment.sessionVariables = {
     AMD_VULKAN_ICD = "RADV";
     WINEESYNC = "1";
     WINEFSYNC = "1";
     XCURSOR_SIZE = "32";
+    MANGOHUD = "1"; # Auto-enable mangohud for all games
   };
 
   security.pam.loginLimits = [
@@ -217,9 +217,6 @@ in
     { domain = "@audio"; item = "memlock"; type = "-"; value = "unlimited"; }
   ];
 
-  ############################################################
-  # Networking & Locale
-  ############################################################
   networking.hostName = "nixos";
   networking.networkmanager.enable = true;
   time.timeZone = "Europe/Berlin";
@@ -232,9 +229,6 @@ in
     LC_TIME = "de_DE.UTF-8";
   };
 
-  ############################################################
-  # Theming (GTK & Qt)
-  ############################################################
   qt = {
     enable = true;
     platformTheme = "gtk2";
@@ -256,17 +250,11 @@ in
     gtk-icon-theme-name=Papirus-Dark
   '';
 
-  ############################################################
-  # Mouse & Libinput
-  ############################################################
   services.libinput = {
     enable = true;
     mouse = { accelProfile = "flat"; accelSpeed = "-0.3"; };
   };
 
-  ############################################################
-  # X11 & i3
-  ############################################################
   services.xserver = {
     enable = true;
     desktopManager.xterm.enable = false;
@@ -284,9 +272,6 @@ in
   };
   console.keyMap = "de";
 
-  ############################################################
-  # Gaming & Hardware
-  ############################################################
   programs.gamemode = {
     enable = true;
     settings = {
@@ -304,11 +289,17 @@ in
   programs.steam.enable = true;
 
   ############################################################
-  # Shell & Aliases
+  # Zsh & Starship (Developer Shell)
   ############################################################
+  programs.zsh = {
+    enable = true;
+    autosuggestions.enable = true;
+    syntaxHighlighting.enable = true;
+    shellInit = "eval \"$(${pkgs.starship}/bin/starship init zsh)\"";
+  };
+  users.users."torbenn".shell = pkgs.zsh;
   environment.shellAliases = { rebuild = "sudo nixos-rebuild switch"; };
-  
-  # Only run fastfetch on the very first terminal, not in every tmux split
+
   programs.bash.interactiveShellInit = ''
     if [ -z "$TMUX" ]; then
       fastfetch
@@ -316,22 +307,28 @@ in
   '';
 
   ############################################################
-  # Display Manager
+  # Ly Display Manager (Riced & Fixed)
   ############################################################
-  services.displayManager.ly.enable = true;
+  services.displayManager.ly = {
+    enable = true;
+    settings = {
+      animation = "matrix";
+      clock = "%c";
+      numlock = true;
+      hide_borders = false;
+      bg = 8;     # Dark Blue/Black
+      fg = 15;    # White
+      border_fg = 4; # Blue
+    };
+  };
+  # Fixed: defaultSession must be set here, not inside ly.settings
   services.displayManager.defaultSession = "none+i3";
 
-  ############################################################
-  # Dotfiles Management (System-wide XDG)
-  ############################################################
-
-  # --- Picom (Premium Frosted Glass Compositor) ---
+  # --- Picom (Premium Frosted Glass) ---
   environment.etc."xdg/picom.conf".text = ''
     backend = "glx";
     vsync = true;
     use-damage = true;
-    
-    # Modern aesthetics
     corner-radius = 8;
     shadow = true;
     shadow-radius = 12;
@@ -339,13 +336,9 @@ in
     shadow-offset-x = -4;
     shadow-offset-y = -4;
     shadow-exclude = [ "class_g = 'dmenu'", "class_g = 'Rofi'", "name = 'i3lock'" ];
-    
-    # Subtle animations
     fading = true;
     fade-in-step = 0.05;
     fade-out-step = 0.05;
-    
-    # Frosted Glass Blur
     blur-method = "dual_kawase";
     blur-strength = 5;
     blur-background = true;
@@ -356,18 +349,14 @@ in
         "class_g = 'dmenu'",
         "name = 'i3lock'"
     ];
-    
-    # Transparency for inactive windows
     inactive-opacity = 0.95;
     inactive-dim = 0.1;
     focus-exclude = [ "class_g = 'Rofi'", "class_g = 'dmenu'", "name = 'i3lock'" ];
-    
-    # PERFORMANCE: Disable compositor completely for fullscreen games
     unredir-if-possible = true;
     unredir-if-possible-exclude = [];
   '';
 
-  # --- Conky (Desktop Widget) ---
+  # --- Conky ---
   environment.etc."xdg/conky/conky.conf".text = ''
     conky.config = {
         alignment = 'top_right',
@@ -383,7 +372,7 @@ in
         draw_outline = false,
         draw_shades = false,
         extra_newline = false,
-        font = 'Monocraft:size=10',
+        font = 'JetBrainsMono Nerd Font:size=10',
         gap_x = 20,
         gap_y = 60,
         minimum_height = 5,
@@ -427,7 +416,87 @@ in
     }
   '';
 
-  # --- Dunst (Notifications) ---
+  # --- Neovim IDE (init.lua with Mason) ---
+  environment.etc."xdg/nvim/init.lua".text = ''
+    -- Basic Settings
+    vim.opt.number = true
+    vim.opt.relativenumber = true
+    vim.opt.shiftwidth = 4
+    vim.opt.tabstop = 4
+    vim.opt.expandtab = true
+    vim.opt.smartindent = true
+    vim.opt.termguicolors = true
+    vim.opt.wrap = false
+
+    -- Leader Key
+    vim.g.mapleader = " "
+
+    -- Bootstrap lazy.nvim
+    local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
+    if not vim.loop.fs_stat(lazypath) then
+      vim.fn.system({
+        "git", "clone", "--filter=blob:none",
+        "https://github.com/folke/lazy.nvim.git", "--branch=stable", lazypath
+      })
+    end
+    vim.opt.rtp:prepend(lazypath)
+
+    -- Plugins
+    require("lazy").setup({
+      { "catppuccin/nvim", name = "catppuccin", priority = 1000 },
+      { "nvim-treesitter/nvim-treesitter", build = ":TSUpdate" },
+      { "nvim-telescope/telescope.nvim", tag = "0.1.5", dependencies = { "nvim-lua/plenary.nvim" } },
+      { "neovim/nvim-lspconfig" },
+      { "williamboman/mason.nvim" },
+      { "williamboman/mason-lspconfig.nvim" },
+      { "hrsh7th/nvim-cmp", dependencies = { "hrsh7th/cmp-nvim-lsp", "hrsh7th/cmp-buffer", "hrsh7th/cmp-path" } },
+      { "L3MON4D3/LuaSnip", dependencies = { "saadparwaiz1/cmp_luasnip" } },
+      { "nvim-lualine/lualine.nvim", dependencies = { "nvim-tree/nvim-web-devicons" } },
+      { "nvim-tree/nvim-tree.lua", dependencies = { "nvim-tree/nvim-web-devicons" } },
+      { "tpope/vim-fugitive" },
+      { "windwp/nvim-autopairs" },
+    })
+
+    -- Theme
+    vim.cmd.colorscheme "catppuccin-macchiato"
+
+    -- Keybindings
+    vim.keymap.set("n", "<leader>ff", require("telescope.builtin").find_files, {})
+    vim.keymap.set("n", "<leader>fg", require("telescope.builtin").live_grep, {})
+    vim.keymap.set("n", "<leader>fb", require("telescope.builtin").buffers, {})
+    vim.keymap.set("n", "<leader>e", ":NvimTreeToggle<CR>", {})
+
+    -- LSP Config (Mason handles installation)
+    require("mason").setup()
+    require("mason-lspconfig").setup()
+    local capabilities = require('cmp_nvim_lsp').default_capabilities()
+    local lspconfig = require('lspconfig')
+    lspconfig.clangd.setup { capabilities = capabilities }
+    lspconfig.pyright.setup { capabilities = capabilities }
+    lspconfig.rust_analyzer.setup { capabilities = capabilities }
+    lspconfig.ts_ls.setup { capabilities = capabilities }
+    lspconfig.gopls.setup { capabilities = capabilities }
+
+    -- Autocompletion
+    local cmp = require'cmp'
+    cmp.setup({
+      snippet = { expand = function(args) require('luasnip').lsp_expand(args.body) end },
+      mapping = cmp.mapping.preset.insert({
+        ['<C-b>'] = cmp.mapping.scroll_docs(-4),
+        ['<C-f>'] = cmp.mapping.scroll_docs(4),
+        ['<C-Space>'] = cmp.mapping.complete(),
+        ['<CR>'] = cmp.mapping.confirm({ select = true }),
+      }),
+      sources = cmp.config.sources({
+        { name = 'nvim_lsp' },
+        { name = 'luasnip' },
+        { name = 'path' },
+        { name = 'buffer' },
+      })
+    })
+  '';
+
+  # --- Dunst ---
   environment.etc."xdg/dunst/dunstrc".text = ''
     [global]
     monitor = 0
@@ -435,7 +504,7 @@ in
     geometry = "400x5-30+30"
     transparency = 10
     corner_radius = 8
-    font = Monocraft 10
+    font = JetBrainsMono Nerd Font 10
     frame_color = "#363a4f"
     separator_color = frame
     progress_bar_corner_radius = 4
@@ -497,15 +566,14 @@ in
     set -g window-status-format "#[fg=#a5adcb,dim] #I:#W "
   '';
 
-  # --- Kitty Terminal ---
+  # --- Kitty ---
   environment.etc."xdg/kitty/kitty.conf".text = ''
-    font_family Monocraft
+    font_family JetBrainsMono Nerd Font
     font_size 10.0
     cursor_shape beam
     cursor_blink_interval 0.5
     window_padding_width 6
     
-    # Catppuccin Macchiato
     foreground              #cad3f5
     background              #24273a
     selection_foreground    #24273a
@@ -514,10 +582,8 @@ in
     active_border_color     #8aadf4
     inactive_border_color   #363a4f
     
-    # Subtle transparency
     background_opacity 0.95
     
-    # Tab bar
     tab_bar_edge top
     tab_bar_style powerline
     tab_powerline_style slanted
@@ -527,7 +593,7 @@ in
     inactive_tab_background #363a4f
   '';
 
-  # --- i3 Window Manager Configuration ---
+  # --- i3 Window Manager ---
   environment.etc."xdg/i3/config".text = ''
     # ============================================================
     # Variables & Binaries
@@ -539,9 +605,9 @@ in
     set $files ${kittyBin} --single-instance -e ${yaziBin}
     
     # ============================================================
-    # Appearance (Modernized i3)
+    # Appearance
     # ============================================================
-    font pango:Monocraft 10
+    font pango:JetBrainsMono Nerd Font 10
     default_border pixel 3
     default_floating_border pixel 3
     smart_borders on
@@ -549,7 +615,6 @@ in
     gaps inner 8
     gaps outer 0
     
-    # Catppuccin Macchiato Palette
     set $bg #24273a
     set $fg #cad3f5
     set $accent #8aadf4
@@ -563,12 +628,12 @@ in
     client.placeholder      $bg       $bg       $fg       $bg       $bg
     
     # ============================================================
-    # Monitors
+    # Monitors (1-9 on Primary, Special key for Secondary)
     # ============================================================
     exec --no-startup-id ${xrandrBin} --output DisplayPort-0 --mode 1920x1080 --rate 180.00 --primary --output HDMI-A-0 --mode 1920x1080 --rate 74.97 --right-of DisplayPort-0
     
     # ============================================================
-    # Window Rules & Workflow
+    # Window Rules
     # ============================================================
     for_window [class="Pavucontrol"] floating enable, resize set 800 600, move position center
     for_window [class="flameshot"] floating enable
@@ -578,19 +643,18 @@ in
     for_window [class="scratch_term"] floating enable, resize set 1000 600, move position center
     for_window [class="scratch_python"] floating enable, resize set 800 600, move position center
     for_window [class="scratch_btop"] floating enable, resize set 1000 600, move position center
+    for_window [class="scratch_git"] floating enable, resize set 1000 600, move position center
+    for_window [class="scratch_music"] floating enable, resize set 1000 600, move position center
     
     # ============================================================
-    # Core Binds (Omarchy QWERTZ Workflow)
+    # Core Binds
     # ============================================================
     bindsym $mod+Return exec $term
     bindsym $mod+d exec --no-startup-id $menu
     bindsym $mod+Shift+Return exec $browser
     bindsym $mod+n exec $files
-    
-    # Window Management
     bindsym $mod+w kill
     
-    # Layouts
     bindsym $mod+v split v
     bindsym $mod+b split h
     bindsym $mod+e layout toggle split
@@ -600,7 +664,6 @@ in
     bindsym $mod+Shift+space floating toggle
     bindsym $mod+space focus mode_toggle
     
-    # Focus (Vim keys + Arrows)
     bindsym $mod+h focus left
     bindsym $mod+j focus down
     bindsym $mod+k focus up
@@ -610,13 +673,12 @@ in
     bindsym $mod+Up focus up
     bindsym $mod+Right focus right
     
-    # Movement
     bindsym $mod+Shift+h move left
     bindsym $mod+Shift+j move down
     bindsym $mod+Shift+k move up
     bindsym $mod+Shift+l move right
     
-    # Workspaces
+    # Workspaces (1-9 Primary)
     set $ws1 "1: DEV"
     set $ws2 "2: WEB"
     set $ws3 "3: TERM"
@@ -626,7 +688,6 @@ in
     set $ws7 "7"
     set $ws8 "8"
     set $ws9 "9"
-    set $ws10 "10"
     
     workspace $ws1 output DisplayPort-0
     workspace $ws2 output DisplayPort-0
@@ -637,9 +698,9 @@ in
     workspace $ws7 output DisplayPort-0
     workspace $ws8 output DisplayPort-0
     workspace $ws9 output DisplayPort-0
-    workspace $ws10 output DisplayPort-0
     
-    # Auto-assign apps to workspaces
+    workspace "10: MON2" output HDMI-A-0
+    
     assign [class="qutebrowser"] $ws2
     assign [class="Steam"] $ws4
     assign [class="discord"] $ws5
@@ -654,7 +715,6 @@ in
     bindsym $mod+7 workspace number $ws7
     bindsym $mod+8 workspace number $ws8
     bindsym $mod+9 workspace number $ws9
-    bindsym $mod+0 workspace number $ws10
     
     bindsym $mod+Shift+1 move container to workspace number $ws1
     bindsym $mod+Shift+2 move container to workspace number $ws2
@@ -665,47 +725,33 @@ in
     bindsym $mod+Shift+7 move container to workspace number $ws7
     bindsym $mod+Shift+8 move container to workspace number $ws8
     bindsym $mod+Shift+9 move container to workspace number $ws9
-    bindsym $mod+Shift+0 move container to workspace number $ws10
     
     bindsym $mod+Tab workspace next
     bindsym $mod+Shift+Tab workspace prev
     
     # ============================================================
-    # Scratchpads & Rofi Utilities
+    # Scratchpads & Utilities
     # ============================================================
-    # Terminal Scratchpad (Super+Z)
     bindsym $mod+z exec --no-startup-id ${scratchTermBin}
-    
-    # Python REPL Scratchpad (Super+P)
     bindsym $mod+p exec --no-startup-id ${scratchPythonBin}
-    
-    # System Monitor Scratchpad (Super+M)
     bindsym $mod+m exec --no-startup-id ${scratchBtopBin}
-    
-    # Lazygit TUI (Super+G)
     bindsym $mod+g exec --no-startup-id ${kittyBin} --class=scratch_git -e ${lazygitBin}
-    for_window [class="scratch_git"] floating enable, resize set 1000 600, move position center, move scratchpad, scratchpad show
-    
-    # ncspot TUI Music (Super+Shift+M)
     bindsym $mod+Shift+m exec --no-startup-id ${kittyBin} --class=scratch_music -e ${ncspotBin}
-    for_window [class="scratch_music"] floating enable, resize set 1000 600, move position center, move scratchpad, scratchpad show
-    
-    # Clipboard Manager (Super+Shift+D)
     bindsym $mod+Shift+d exec --no-startup-id ${clipmenuBin}
-    
-    # Emoji Picker (Super+Slash)
     bindsym $mod+slash exec --no-startup-id ${rofiEmojiBin}
-    
-    # Calculator (Super+Period)
     bindsym $mod+period exec --no-startup-id ${rofiBin} -show calc -modi calc -plugin-path ${pkgs.rofi-calc}/lib/rofi
-    
-    # Power Menu (Super+Shift+P)
     bindsym $mod+Shift+p exec --no-startup-id ${powerMenuBin}
     
-    # ============================================================
-    # System & Media Keys
-    # ============================================================
+    # Rofi Keybind Cheatsheet
+    bindsym $mod+F1 exec --no-startup-id ${showKeysBin}
+    
+    # Special Monitor 2 Keybind
+    bindsym $mod+o workspace "10: MON2"
+    bindsym $mod+Shift+o move container to workspace "10: MON2"
+    
+    # System & Media
     bindsym $mod+Escape exec --no-startup-id ${powerMenuBin}
+    bindsym $mod+F11 exec --no-startup-id ${lockBin}
     bindsym $mod+Ctrl+l exec --no-startup-id ${lockBin}
     
     bindsym XF86AudioRaiseVolume exec --no-startup-id pactl set-sink-volume @DEFAULT_SINK@ +10%
@@ -718,9 +764,7 @@ in
     bindsym Print exec ${flameshotBin} full -c
     bindsym $mod+Shift+s exec ${flameshotBin} gui
     
-    # ============================================================
     # Autostart
-    # ============================================================
     exec --no-startup-id ${dexBin} --autostart --environment i3
     exec --no-startup-id ${xssLockBin} --transfer-sleep-lock -- ${lockBin} --nofork
     exec --no-startup-id ${nmAppletBin}
@@ -730,14 +774,13 @@ in
     exec --no-startup-id ${conkyBin} -c /etc/xdg/conky/conky.conf
     exec --no-startup-id /run/current-system/sw/libexec/polkit-gnome-authentication-agent-1
     exec --no-startup-id clipmenud
+    exec --no-startup-id udiskie -t
     
-    # ============================================================
     # Status Bar
-    # ============================================================
     bar {
             status_command ${i3statusBin} -c /etc/xdg/i3status.conf
             position bottom
-            font pango:Monocraft 10
+            font pango:JetBrainsMono Nerd Font 10
             tray_output primary
             workspace_buttons yes
             colors {
@@ -785,36 +828,28 @@ in
   };
   services.pulseaudio.enable = false;
 
-  ############################################################
-  # Bluetooth (Disabled per request)
-  ############################################################
   hardware.bluetooth.enable = false;
 
-  ############################################################
-  # Fonts
-  ############################################################
-  fonts.packages = with pkgs; [ monocraft ];
+  # Fixed: Renamed nerdfonts to nerd-fonts.jetbrains-mono
+  fonts.packages = with pkgs; [
+    monocraft
+    nerd-fonts.jetbrains-mono
+  ];
 
-  ############################################################
-  # User Configuration
-  ############################################################
   users.users."torbenn" = {
     isNormalUser = true;
     description = "torbenn";
     extraGroups = [ "networkmanager" "wheel" "audio" ];
   };
 
-  ############################################################
-  # System Packages (TUI Focused)
-  ############################################################
   nixpkgs.config.allowUnfree = true;
 
   environment.systemPackages = with pkgs; [
     # --- Development ---
-    bat bun cargo clang cmake curl dotnet-sdk eza fd gcc gh git jq fzf neovim ninja nodejs python3 python3Packages.pip ripgrep rustc tmux unzip vscode wget xdg-utils yq zip lazygit lazydocker
+    bat bun cargo clang cmake curl dotnet-sdk eza fd gcc gh git jq fzf neovim ninja nodejs python3 python3Packages.pip ripgrep rustc tmux unzip vscode wget xdg-utils yq zip lazygit lazydocker zsh starship
 
     # --- CLI / TUI Utilities ---
-    btop fastfetch htop libva-utils lsof mesa-demos ncdu pciutils radeontop strace tree usbutils vulkan-tools killall scrot imagemagick xclip xsel yazi newsboat neomutt libqalculate chafa
+    btop fastfetch htop libva-utils lsof mesa-demos ncdu pciutils radeontop strace tree usbutils vulkan-tools killall scrot imagemagick xclip xsel yazi libqalculate chafa udiskie
 
     # --- Gaming ---
     corectrl dxvk gamescope lutris mangohud protonup-qt vinegar vkbasalt wineWowPackages.stable winetricks noriskclient-launcher
@@ -823,12 +858,9 @@ in
     adwaita-qt brightnessctl clipmenu conky dex discord dunst feh flameshot gnome-themes-extra i3 i3lock-color kitty networkmanagerapplet papirus-icon-theme pavucontrol picom playerctl polkit_gnome qutebrowser rofi rofi-emoji rofi-calc spotify vesktop xdotool xss-lock ncspot
 
     # --- Custom Scripts ---
-    rofiMenuScript lockScript scratchTermScript scratchPythonScript scratchBtopScript setWallpaperScript powerMenuScript
+    rofiMenuScript lockScript scratchTermScript scratchPythonScript scratchBtopScript setWallpaperScript powerMenuScript showKeysScript
   ];
 
-  ############################################################
-  # Services & Portals
-  ############################################################
   services.flatpak.enable = true;
   xdg.portal = {
     enable = true;
@@ -837,14 +869,15 @@ in
   };
 
   ############################################################
-  # Nix Auto Garbage Collection
+  # Nix Auto Garbage Collection (Changed to 3 days)
   ############################################################
-  nix.gc = { automatic = true; dates = "weekly"; options = "--delete-older-than 30d"; };
+  nix.gc = {
+    automatic = true;
+    dates = "daily";
+    options = "--delete-older-than 3d";
+  };
   nix.settings.auto-optimise-store = true;
 
-  ############################################################
-  # System State
-  ############################################################
   system.stateVersion = "26.05";
-  ## v7.1
+  ## v9.2
 }
