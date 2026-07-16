@@ -1,7 +1,7 @@
 # configuration.nix
 ############################################################
 #
-# System Configuration & Dotfiles
+# System Configuration & Dotfiles (TUI Edition)
 #
 ############################################################
 # This is the master configuration file for your NixOS system.
@@ -15,8 +15,8 @@ let
   rofiBin = "${pkgs.rofi}/bin/rofi";
   kittyBin = "${pkgs.kitty}/bin/kitty";
   tmuxBin = "${pkgs.tmux}/bin/tmux";
-  firefoxBin = "${pkgs.firefox}/bin/firefox";
-  dolphinBin = "${pkgs.kdePackages.dolphin}/bin/dolphin";
+  qutebrowserBin = "${pkgs.qutebrowser}/bin/qutebrowser";
+  yaziBin = "${pkgs.yazi}/bin/yazi";
   btopBin = "${pkgs.btop}/bin/btop";
   pavucontrolBin = "${pkgs.pavucontrol}/bin/pavucontrol";
   nmtuiBin = "${pkgs.networkmanager}/bin/nmtui";
@@ -42,6 +42,9 @@ let
   jqBin = "${pkgs.jq}/bin/jq";
   fehBin = "${pkgs.feh}/bin/feh";
   curlBin = "${pkgs.curl}/bin/curl";
+  conkyBin = "${pkgs.conky}/bin/conky";
+  lazygitBin = "${pkgs.lazygit}/bin/lazygit";
+  ncspotBin = "${pkgs.ncspot}/bin/ncspot";
 
   # --- Custom Scripts ---
   # Rofi wrapper with Catppuccin Macchiato styling
@@ -137,7 +140,6 @@ in
   boot.loader.efi.canTouchEfiVariables = true;
   boot.loader.timeout = 3; # 3 seconds for dual-boot selection
   
-  # Clean up old boot entries automatically
   boot.loader.systemd-boot.configurationLimit = 5;
 
   boot.kernelPackages = pkgs.linuxPackages_latest;
@@ -165,7 +167,7 @@ in
   };
 
   ############################################################
-  # BOOT FIX: Disable Network Wait (Fixes 3-minute boot)
+  # BOOT FIX: Disable Network Wait
   ############################################################
   systemd.services.NetworkManager-wait-online.enable = false;
   systemd.services.systemd-udev-settle.enable = false;
@@ -323,7 +325,7 @@ in
   # Dotfiles Management (System-wide XDG)
   ############################################################
 
-  # --- Picom (Premium macOS-like Compositor) ---
+  # --- Picom (Premium Frosted Glass Compositor) ---
   environment.etc."xdg/picom.conf".text = ''
     backend = "glx";
     vsync = true;
@@ -343,6 +345,18 @@ in
     fade-in-step = 0.05;
     fade-out-step = 0.05;
     
+    # Frosted Glass Blur
+    blur-method = "dual_kawase";
+    blur-strength = 5;
+    blur-background = true;
+    blur-background-frame = true;
+    blur-background-exclude = [
+        "window_type = 'desktop'",
+        "class_g = 'Rofi'",
+        "class_g = 'dmenu'",
+        "name = 'i3lock'"
+    ];
+    
     # Transparency for inactive windows
     inactive-opacity = 0.95;
     inactive-dim = 0.1;
@@ -351,6 +365,56 @@ in
     # PERFORMANCE: Disable compositor completely for fullscreen games
     unredir-if-possible = true;
     unredir-if-possible-exclude = [];
+  '';
+
+  # --- Conky (Desktop Widget) ---
+  environment.etc."xdg/conky/conky.conf".text = ''
+    conky.config = {
+        alignment = 'top_right',
+        background = false,
+        border_width = 1,
+        cpu_avg_samples = 2,
+        default_color = '#cad3f5',
+        default_outline_color = 'white',
+        default_shade_color = 'white',
+        double_buffer = true,
+        draw_borders = false,
+        draw_graph_borders = true,
+        draw_outline = false,
+        draw_shades = false,
+        extra_newline = false,
+        font = 'Monocraft:size=10',
+        gap_x = 20,
+        gap_y = 60,
+        minimum_height = 5,
+        minimum_width = 200,
+        net_avg_samples = 2,
+        no_buffers = true,
+        out_to_console = false,
+        out_to_ncurses = false,
+        out_to_stderr = false,
+        out_to_x = true,
+        own_window = true,
+        own_window_class = 'Conky',
+        own_window_type = 'desktop',
+        own_window_transparent = true,
+        own_window_argb_visual = true,
+        show_graph_range = true,
+        show_graph_scale = false,
+        stippled_borders = 0,
+        update_interval = 2.0,
+        uppercase = false,
+        use_spacer = 'none',
+        use_xft = true,
+        xftalpha = 0.1,
+    }
+    conky.text = [[
+    ''${color #8aadf4}System:''${color} $sysname $kernel
+    ''${color #8aadf4}Uptime:''${color} $uptime
+    ''${color #8aadf4}CPU:''${color} ''${cpu cpu0}% ''${cpubar cpu0}
+    ''${color #8aadf4}RAM:''${color} $mem/$memmax ''${membar}
+    ''${color #8aadf4}Disk:''${color} ''${fs_used /}/''${fs_size /} ''${fs_bar /}
+    ]]
   '';
 
   # --- Fastfetch ---
@@ -471,8 +535,8 @@ in
     set $mod Mod4
     set $term ${kittyBin} --single-instance -e ${tmuxBin} new -A -s main
     set $menu ${rofiMenuBin}
-    set $browser ${firefoxBin}
-    set $files ${dolphinBin}
+    set $browser ${qutebrowserBin}
+    set $files ${kittyBin} --single-instance -e ${yaziBin}
     
     # ============================================================
     # Appearance (Modernized i3)
@@ -481,6 +545,7 @@ in
     default_border pixel 3
     default_floating_border pixel 3
     smart_borders on
+    smart_gaps on
     gaps inner 8
     gaps outer 0
     
@@ -505,7 +570,6 @@ in
     # ============================================================
     # Window Rules & Workflow
     # ============================================================
-    # Auto-center dialogs and floating windows
     for_window [class="Pavucontrol"] floating enable, resize set 800 600, move position center
     for_window [class="flameshot"] floating enable
     for_window [title="Picture-in-Picture"] floating enable, sticky enable
@@ -576,8 +640,7 @@ in
     workspace $ws10 output DisplayPort-0
     
     # Auto-assign apps to workspaces
-    assign [class="firefox"] $ws2
-    assign [class="dolphin"] $ws3
+    assign [class="qutebrowser"] $ws2
     assign [class="Steam"] $ws4
     assign [class="discord"] $ws5
     assign [class="Vesktop"] $ws5
@@ -619,6 +682,14 @@ in
     # System Monitor Scratchpad (Super+M)
     bindsym $mod+m exec --no-startup-id ${scratchBtopBin}
     
+    # Lazygit TUI (Super+G)
+    bindsym $mod+g exec --no-startup-id ${kittyBin} --class=scratch_git -e ${lazygitBin}
+    for_window [class="scratch_git"] floating enable, resize set 1000 600, move position center, move scratchpad, scratchpad show
+    
+    # ncspot TUI Music (Super+Shift+M)
+    bindsym $mod+Shift+m exec --no-startup-id ${kittyBin} --class=scratch_music -e ${ncspotBin}
+    for_window [class="scratch_music"] floating enable, resize set 1000 600, move position center, move scratchpad, scratchpad show
+    
     # Clipboard Manager (Super+Shift+D)
     bindsym $mod+Shift+d exec --no-startup-id ${clipmenuBin}
     
@@ -656,6 +727,7 @@ in
     exec --no-startup-id ${dunstBin} -config /etc/xdg/dunst/dunstrc
     exec --no-startup-id ${setWallpaperBin}
     exec --no-startup-id ${picomBin} --config /etc/xdg/picom.conf
+    exec --no-startup-id ${conkyBin} -c /etc/xdg/conky/conky.conf
     exec --no-startup-id /run/current-system/sw/libexec/polkit-gnome-authentication-agent-1
     exec --no-startup-id clipmenud
     
@@ -733,22 +805,22 @@ in
   };
 
   ############################################################
-  # System Packages
+  # System Packages (TUI Focused)
   ############################################################
   nixpkgs.config.allowUnfree = true;
 
   environment.systemPackages = with pkgs; [
     # --- Development ---
-    bat bun cargo clang cmake curl dotnet-sdk eza fd firefox gcc git jq neovim ninja nodejs python3 python3Packages.pip ripgrep rustc tmux unzip vscode wget yq zip
+    bat bun cargo clang cmake curl dotnet-sdk eza fd gcc gh git jq fzf neovim ninja nodejs python3 python3Packages.pip ripgrep rustc tmux unzip vscode wget xdg-utils yq zip lazygit lazydocker
 
-    # --- CLI Utilities ---
-    btop fastfetch htop libva-utils lsof mesa-demos ncdu pciutils radeontop strace tree usbutils vulkan-tools killall scrot imagemagick xclip xsel
+    # --- CLI / TUI Utilities ---
+    btop fastfetch htop libva-utils lsof mesa-demos ncdu pciutils radeontop strace tree usbutils vulkan-tools killall scrot imagemagick xclip xsel yazi newsboat neomutt libqalculate chafa
 
     # --- Gaming ---
     corectrl dxvk gamescope lutris mangohud protonup-qt vinegar vkbasalt wineWowPackages.stable winetricks noriskclient-launcher
 
-    # --- Desktop & GUI ---
-    adwaita-qt brightnessctl clipmenu dex discord kdePackages.dolphin kdePackages.kio-extras kdePackages.dolphin-plugins dunst feh flameshot gnome-themes-extra i3 i3lock-color kitty networkmanagerapplet papirus-icon-theme pavucontrol picom playerctl polkit_gnome rofi rofi-emoji rofi-calc libqalculate spotify vesktop xdotool xss-lock
+    # --- Desktop & GUI (Minimal) ---
+    adwaita-qt brightnessctl clipmenu conky dex discord dunst feh flameshot gnome-themes-extra i3 i3lock-color kitty networkmanagerapplet papirus-icon-theme pavucontrol picom playerctl polkit_gnome qutebrowser rofi rofi-emoji rofi-calc spotify vesktop xdotool xss-lock ncspot
 
     # --- Custom Scripts ---
     rofiMenuScript lockScript scratchTermScript scratchPythonScript scratchBtopScript setWallpaperScript powerMenuScript
@@ -774,5 +846,5 @@ in
   # System State
   ############################################################
   system.stateVersion = "26.05";
-  ## v5.1
+  ## v7.1
 }
