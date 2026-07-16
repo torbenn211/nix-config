@@ -1,7 +1,7 @@
 # configuration.nix
 ############################################################
 #
-# System Configuration
+# System Configuration & Dotfiles
 #
 ############################################################
 # This is the master configuration file for your NixOS system.
@@ -11,19 +11,18 @@
 { config, pkgs, lib, ... }:
 
 let
-  # Define absolute paths to binaries. This is the Nix way to ensure
-  # scripts and window managers always find the right executables.
+  # --- Binary Paths ---
   rofiBin = "${pkgs.rofi}/bin/rofi";
   kittyBin = "${pkgs.kitty}/bin/kitty";
   tmuxBin = "${pkgs.tmux}/bin/tmux";
   firefoxBin = "${pkgs.firefox}/bin/firefox";
-  thunarBin = "${pkgs.thunar}/bin/thunar";
+  dolphinBin = "${pkgs.kdePackages.dolphin}/bin/dolphin";
   btopBin = "${pkgs.btop}/bin/btop";
   pavucontrolBin = "${pkgs.pavucontrol}/bin/pavucontrol";
   nmtuiBin = "${pkgs.networkmanager}/bin/nmtui";
   xrandrBin = "${pkgs.xrandr}/bin/xrandr";
   xdotoolBin = "${pkgs.xdotool}/bin/xdotool";
-  i3lockBin = "${pkgs.i3lock}/bin/i3lock";
+  i3lockBin = "${pkgs.i3lock-color}/bin/i3lock-color";
   i3statusBin = "${pkgs.i3status}/bin/i3status";
   flameshotBin = "${pkgs.flameshot}/bin/flameshot";
   playerctlBin = "${pkgs.playerctl}/bin/playerctl";
@@ -37,46 +36,111 @@ let
   picomBin = "${pkgs.picom}/bin/picom";
   gamescopeBin = "${pkgs.gamescope}/bin/gamescope";
   steamBin = "${pkgs.steam}/bin/steam";
+  clipmenuBin = "${pkgs.clipmenu}/bin/clipmenu";
+  rofiEmojiBin = "${pkgs.rofi-emoji}/bin/rofi-emoji";
+  pythonBin = "${pkgs.python3}/bin/python3";
+  jqBin = "${pkgs.jq}/bin/jq";
+  fehBin = "${pkgs.feh}/bin/feh";
+  curlBin = "${pkgs.curl}/bin/curl";
 
-  # Custom Rofi wrapper script defined inline so we can inject its absolute path
-  # directly into i3, bypassing any $PATH issues.
+  # --- Custom Scripts ---
+  # Rofi wrapper with Catppuccin Macchiato styling
   rofiMenuScript = pkgs.writeShellScriptBin "rofi-menu" ''
     exec ${rofiBin} -show drun -show-icons -font "Monocraft 10" -icon-theme "Papirus-Dark" \
       -drun-display-format "{name}" -disable-history -hide-scrollbar \
-      -theme-str 'window { background-color: #000000; border: 2px; border-color: #333333; padding: 12px; width: 30%; }' \
-      -theme-str 'mainbox { background-color: #000000; spacing: 0px; }' \
-      -theme-str 'inputbar { background-color: #1A1A1A; text-color: #FFFFFF; padding: 10px; border: 0px 0px 2px 0px; border-color: #333333; }' \
-      -theme-str 'prompt { text-color: #888888; }' \
-      -theme-str 'entry { text-color: #FFFFFF; placeholder: "Search..."; }' \
-      -theme-str 'listview { background-color: #000000; columns: 1; lines: 8; spacing: 4px; cycle: true; dynamic: true; layout: vertical; }' \
-      -theme-str 'element { background-color: #000000; text-color: #888888; padding: 8px; border-radius: 0px; orientation: horizontal; }' \
-      -theme-str 'element selected { background-color: #333333; text-color: #FFFFFF; }' \
-      -theme-str 'element-icon { size: 20px; margin: 0px 10px 0px 0px; }' \
+      -theme-str 'window { background-color: #24273a; border: 2px; border-color: #363a4f; border-radius: 8px; padding: 12px; width: 30%; }' \
+      -theme-str 'mainbox { background-color: #24273a; spacing: 0px; }' \
+      -theme-str 'inputbar { background-color: #1e2030; text-color: #cad3f5; padding: 12px; border: 0px 0px 2px 0px; border-color: #363a4f; }' \
+      -theme-str 'prompt { text-color: #8aadf4; }' \
+      -theme-str 'entry { text-color: #cad3f5; placeholder: "Search..."; }' \
+      -theme-str 'listview { background-color: #24273a; columns: 1; lines: 8; spacing: 4px; cycle: true; dynamic: true; layout: vertical; }' \
+      -theme-str 'element { background-color: #24273a; text-color: #a5adcb; padding: 8px; border-radius: 4px; orientation: horizontal; }' \
+      -theme-str 'element selected { background-color: #363a4f; text-color: #cad3f5; }' \
+      -theme-str 'element-icon { size: 24px; margin: 0px 10px 0px 0px; }' \
       -theme-str 'element-text { vertical-align: 0.5; }'
   '';
   rofiMenuBin = "${rofiMenuScript}/bin/rofi-menu";
+
+  # Rofi Power Menu
+  powerMenuScript = pkgs.writeShellScriptBin "power-menu" ''
+    options="Lock\nSuspend\nReboot\nPoweroff\nLogout"
+    selected=$(echo -e "$options" | ${rofiBin} -dmenu -p "Power" -theme-str 'window {width: 15%;} entry {placeholder: "Select...";}')
+    case "$selected" in
+      Lock) ${lockBin} ;;
+      Suspend) systemctl suspend ;;
+      Reboot) systemctl reboot ;;
+      Poweroff) systemctl poweroff ;;
+      Logout) i3-msg exit ;;
+    esac
+  '';
+  powerMenuBin = "${powerMenuScript}/bin/power-menu";
+
+  # Blur lock screen script
+  lockScript = pkgs.writeShellScriptBin "blur-lock" ''
+    ${xsetrootBin} -solid "#24273a"
+    ${pkgs.scrot}/bin/scrot /tmp/lock.png
+    ${pkgs.imagemagick}/bin/convert /tmp/lock.png -blur 0x5 -resize 1920x1080 /tmp/lock.png
+    ${i3lockBin} -i /tmp/lock.png --insidecolor=24273aff --ringcolor=8aadf4ff --line-uses-inside --keyhlcolor=cad3f5ff --bshlcolor=ed8796ff --separator-color=00000000 --insidevercolor=f5a97fff --ringvercolor=ed8796ff --insidewrongcolor=ed8796ff --ringwrongcolor=ed8796ff --verif-color=cad3f5ff --wrong-color=cad3f5ff --time-color=cad3f5ff --date-color=a5adcbff --layout-color=a5adcbff --radius=20 --ring-width=4 --ignore-empty-password --show-failed-attempts
+    rm /tmp/lock.png
+  '';
+  lockBin = "${lockScript}/bin/blur-lock";
+
+  # Scratchpad Terminal Toggle
+  scratchTermScript = pkgs.writeShellScriptBin "scratch-term" ''
+    if [ $(${i3statusBin} -t get_tree | ${jqBin} -r '.nodes[].nodes[].nodes[].window_properties.class' | grep -c "scratch_term") -gt 0 ]; then
+      i3-msg "[class=\"scratch_term\"] scratchpad show"
+    else
+      ${kittyBin} --class=scratch_term -e ${tmuxBin} new -A -s scratch
+    fi
+  '';
+  scratchTermBin = "${scratchTermScript}/bin/scratch-term";
+
+  # Python REPL Toggle
+  scratchPythonScript = pkgs.writeShellScriptBin "scratch-python" ''
+    if [ $(${i3statusBin} -t get_tree | ${jqBin} -r '.nodes[].nodes[].nodes[].window_properties.class' | grep -c "scratch_python") -gt 0 ]; then
+      i3-msg "[class=\"scratch_python\"] scratchpad show"
+    else
+      ${kittyBin} --class=scratch_python -e ${pythonBin}
+    fi
+  '';
+  scratchPythonBin = "${scratchPythonScript}/bin/scratch-python";
+
+  # btop Toggle
+  scratchBtopScript = pkgs.writeShellScriptBin "scratch-btop" ''
+    if [ $(${i3statusBin} -t get_tree | ${jqBin} -r '.nodes[].nodes[].nodes[].window_properties.class' | grep -c "scratch_btop") -gt 0 ]; then
+      i3-msg "[class=\"scratch_btop\"] scratchpad show"
+    else
+      ${kittyBin} --class=scratch_btop -e ${btopBin}
+    fi
+  '';
+  scratchBtopBin = "${scratchBtopScript}/bin/scratch-btop";
+
+  # Wallpaper Downloader & Setter
+  setWallpaperScript = pkgs.writeShellScriptBin "set-wallpaper" ''
+    WP_DIR="$HOME/.local/share"
+    WP_FILE="$WP_DIR/wallpaper.jpg"
+    mkdir -p "$WP_DIR"
+    if [ ! -f "$WP_FILE" ]; then
+      ${curlBin} -sL "https://wallpapercave.com/wp/wp6600355.jpg" -o "$WP_FILE"
+    fi
+    ${fehBin} --bg-fill "$WP_FILE"
+  '';
+  setWallpaperBin = "${setWallpaperScript}/bin/set-wallpaper";
 in
 {
-  imports =
-    [
-      # Include the results of the hardware scan.
-      ./hardware-configuration.nix
-    ];
+  imports = [ ./hardware-configuration.nix ];
 
   ############################################################
-  #
-  # Boot & Kernel (Deep-Search Gaming Optimized)
-  #
+  # Boot & Kernel (Gaming Optimized)
   ############################################################
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
-  boot.loader.timeout = 5; # Slows it down for changing OS.
-
+  boot.loader.timeout = 3; # 3 seconds for dual-boot selection
+  
+  # Clean up old boot entries automatically
+  boot.loader.systemd-boot.configurationLimit = 5;
 
   boot.kernelPackages = pkgs.linuxPackages_latest;
-
-  # Unlocks AMD GPU power profiles, forces amdgpu to high performance, disables CPU security mitigations,
-  # disables kernel watchdog (saves CPU), fixes Wine split_lock micro-stutters, and forces full kernel preemption for low latency.
   boot.kernelParams = [ 
     "amdgpu.ppfeaturemask=0xffffffff" 
     "amdgpu.performance_level=high" 
@@ -86,13 +150,9 @@ in
     "preempt=full"
   ];
 
-  # Add tcp_bbr for lower network latency
   boot.kernelModules = [ "tcp_bbr" "amdgpu" ];
-
-  # Advanced: Cleans /tmp on every boot to prevent junk buildup.
   boot.tmp.cleanOnBoot = true;
 
-  # Kernel Sysctl Tuning: Aggressive RAM/Cache/Network management for gaming.
   boot.kernel.sysctl = {
     "vm.swappiness" = 10;
     "vm.vfs_cache_pressure" = 50;
@@ -105,49 +165,41 @@ in
   };
 
   ############################################################
-  #
-  # Advanced System Optimizations (Reddit Gold)
-  #
+  # BOOT FIX: Disable Network Wait (Fixes 3-minute boot)
   ############################################################
-  # KSM (Kernel Same-page Merging): Saves RAM by merging identical memory pages.
-  hardware.ksm.enable = true;
+  systemd.services.NetworkManager-wait-online.enable = false;
+  systemd.services.systemd-udev-settle.enable = false;
 
-  # ZRAM: Compresses RAM memory instead of using the swap file.
-  zramSwap = {
+  ############################################################
+  # SCX Scheduler (Blazing Fast Gaming CPU Scheduler)
+  ############################################################
+  services.scx = {
     enable = true;
-    algorithm = "zstd";
-    memoryPercent = 100;
+    scheduler = "scx_bpfland";
   };
 
-  # SSD Optimization: Runs a weekly TRIM to keep your SSD fast and healthy.
+  ############################################################
+  # System Optimizations
+  ############################################################
+  hardware.ksm.enable = true;
+  zramSwap = { enable = true; algorithm = "zstd"; memoryPercent = 100; };
   services.fstrim.enable = true;
-
-  # Journal Limits: Prevents system logs from eating up your disk space.
+  
   services.journald.extraConfig = ''
     SystemMaxUse=500M
     MaxRetentionSec=1month
   '';
 
-  # Nix Flakes: Enables modern Nix command and Flakes.
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
-
-  # Nix Daemon Tuning: Background Nix builds run at lowest CPU priority so they never stutter your games.
   nix.daemonIOSchedClass = "idle";
   nix.daemonCPUSchedPolicy = "idle";
-
-  # RAM Saver: Disables the massive NixOS package database background service
+  
   programs.command-not-found.enable = false;
-
-  # RAM Saver: Disables building and storing system manuals in memory
   documentation.nixos.enable = false;
-
-  # RAM & CPU Saver: Replaces legacy D-Bus with a high-performance implementation
   services.dbus.implementation = "broker";
 
   ############################################################
-  #
-  # Environment Variables (FPS Boosts & Cursor Fix)
-  #
+  # Environment Variables
   ############################################################
   environment.sessionVariables = {
     AMD_VULKAN_ICD = "RADV";
@@ -156,11 +208,6 @@ in
     XCURSOR_SIZE = "32";
   };
 
-  ############################################################
-  #
-  # Real-Time Process Priorities (PAM Limits)
-  #
-  ############################################################
   security.pam.loginLimits = [
     { domain = "@wheel"; item = "rtprio"; type = "-"; value = 99; }
     { domain = "@wheel"; item = "memlock"; type = "-"; value = "unlimited"; }
@@ -169,38 +216,22 @@ in
   ];
 
   ############################################################
-  #
-  # Networking
-  #
+  # Networking & Locale
   ############################################################
   networking.hostName = "nixos";
   networking.networkmanager.enable = true;
-
-  ############################################################
-  #
-  # Time & Locale
-  #
-  ############################################################
   time.timeZone = "Europe/Berlin";
-
   i18n.defaultLocale = "en_US.UTF-8";
-
   i18n.extraLocaleSettings = {
-    LC_ADDRESS = "de_DE.UTF-8";
-    LC_IDENTIFICATION = "de_DE.UTF-8";
-    LC_MEASUREMENT = "de_DE.UTF-8";
-    LC_MONETARY = "de_DE.UTF-8";
-    LC_NAME = "de_DE.UTF-8";
-    LC_NUMERIC = "de_DE.UTF-8";
-    LC_PAPER = "de_DE.UTF-8";
-    LC_TELEPHONE = "de_DE.UTF-8";
+    LC_ADDRESS = "de_DE.UTF-8"; LC_IDENTIFICATION = "de_DE.UTF-8";
+    LC_MEASUREMENT = "de_DE.UTF-8"; LC_MONETARY = "de_DE.UTF-8";
+    LC_NAME = "de_DE.UTF-8"; LC_NUMERIC = "de_DE.UTF-8";
+    LC_PAPER = "de_DE.UTF-8"; LC_TELEPHONE = "de_DE.UTF-8";
     LC_TIME = "de_DE.UTF-8";
   };
 
   ############################################################
-  #
-  # System-Wide Dark Theme & Styling
-  #
+  # Theming (GTK & Qt)
   ############################################################
   qt = {
     enable = true;
@@ -210,9 +241,11 @@ in
 
   environment.etc."xdg/gtk-3.0/settings.ini".text = ''
     [Settings]
-    gtk-theme-name=Adwaita-dark
+    gtk-theme-name=Catppuccin-Macchiato-Standard-Blue-Dark
     gtk-application-prefer-dark-theme=1
     gtk-icon-theme-name=Papirus-Dark
+    gtk-cursor-theme-name=Adwaita
+    gtk-cursor-theme-size=32
   '';
 
   environment.etc."xdg/gtk-4.0/settings.ini".text = ''
@@ -222,238 +255,164 @@ in
   '';
 
   ############################################################
-  #
   # Mouse & Libinput
-  #
   ############################################################
   services.libinput = {
     enable = true;
-    mouse = {
-      accelProfile = "flat";
-      accelSpeed = "-0.3";
-    };
+    mouse = { accelProfile = "flat"; accelSpeed = "-0.3"; };
   };
 
   ############################################################
-  #
-  # X11 & i3 Window Manager
-  #
+  # X11 & i3
   ############################################################
   services.xserver = {
     enable = true;
     desktopManager.xterm.enable = false;
-
-    # Forces the system to use the dedicated AMD driver.
     videoDrivers = [ "amdgpu" ];
-
-    # Keyboard repeat rate: 650ms delay, 50 repeats per second.
     autoRepeatDelay = 650;
     autoRepeatInterval = 50;
 
     windowManager.i3 = {
       enable = true;
-      extraPackages = with pkgs; [
-        i3status
-        i3lock
-      ];
+      extraPackages = with pkgs; [ i3status i3lock-color ];
     };
 
-    # Configure keymap in X11
-    xkb = {
-      layout = "de";
-      variant = "";
-      # Completely disables the CapsLock key
-      options = "caps:none";
-    };
-
-    # TearFree handles VSync perfectly.
-    deviceSection = ''
-      Option "TearFree" "true"
-    '';
+    xkb = { layout = "de"; variant = ""; options = "caps:none"; };
+    deviceSection = '' Option "TearFree" "true" '';
   };
-
   console.keyMap = "de";
 
   ############################################################
-  #
-  # Gaming Performance (Gamemode)
-  #
+  # Gaming & Hardware
   ############################################################
   programs.gamemode = {
     enable = true;
     settings = {
-      general = {
-        renice = 10;
-        softrealtime = "on";
-        inhibit_screensaver = 1;
-      };
-      cpu = {
-        gov = "performance";
-      };
-      gpu = {
-        amd_performance_level = "high";
-      };
+      general = { renice = 10; softrealtime = "on"; inhibit_screensaver = 1; };
+      cpu = { gov = "performance"; };
+      gpu = { amd_performance_level = "high"; };
     };
   };
 
-  ############################################################
-  #
-  # CoolerControl (Fan & GPU Control)
-  #
-  ############################################################
   programs.coolercontrol.enable = true;
 
-  ############################################################
-  #
-  # Shell Aliases & Auto-run Fastfetch
-  #
-  ############################################################
-  environment.shellAliases = {
-    rebuild = "sudo nixos-rebuild switch";
-  };
-
-  programs.bash.interactiveShellInit = "fastfetch";
+  hardware.graphics.enable = true;
+  hardware.graphics.enable32Bit = true;
+  hardware.graphics.extraPackages = with pkgs; [ libva-vdpau-driver libvdpau-va-gl ];
+  programs.steam.enable = true;
 
   ############################################################
-  #
-  # Display Manager (Login Screen)
-  #
+  # Shell & Aliases
+  ############################################################
+  environment.shellAliases = { rebuild = "sudo nixos-rebuild switch"; };
+  
+  # Only run fastfetch on the very first terminal, not in every tmux split
+  programs.bash.interactiveShellInit = ''
+    if [ -z "$TMUX" ]; then
+      fastfetch
+    fi
+  '';
+
+  ############################################################
+  # Display Manager
   ############################################################
   services.displayManager.ly.enable = true;
   services.displayManager.defaultSession = "none+i3";
 
   ############################################################
-  #
-  # Dotfiles Management (System-wide)
-  #
+  # Dotfiles Management (System-wide XDG)
   ############################################################
 
-  # --- Picom Compositor Configuration (Fixed Skipping & Tearing) ---
+  # --- Picom (Premium macOS-like Compositor) ---
   environment.etc."xdg/picom.conf".text = ''
     backend = "glx";
-    vsync = false;
-    use-damage = false;
-    shadow = false;
-    fading = false;
-    inactive-dim = 0;
+    vsync = true;
+    use-damage = true;
+    
+    # Modern aesthetics
+    corner-radius = 8;
+    shadow = true;
+    shadow-radius = 12;
+    shadow-opacity = 0.4;
+    shadow-offset-x = -4;
+    shadow-offset-y = -4;
+    shadow-exclude = [ "class_g = 'dmenu'", "class_g = 'Rofi'", "name = 'i3lock'" ];
+    
+    # Subtle animations
+    fading = true;
+    fade-in-step = 0.05;
+    fade-out-step = 0.05;
+    
+    # Transparency for inactive windows
+    inactive-opacity = 0.95;
+    inactive-dim = 0.1;
+    focus-exclude = [ "class_g = 'Rofi'", "class_g = 'dmenu'", "name = 'i3lock'" ];
+    
+    # PERFORMANCE: Disable compositor completely for fullscreen games
+    unredir-if-possible = true;
+    unredir-if-possible-exclude = [];
   '';
 
-  # --- Fastfetch Configuration (1990s Retro Green Style) ---
+  # --- Fastfetch ---
   environment.etc."xdg/fastfetch/config.jsonc".text = ''
     {
       "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
-      "logo": {
-        "source": "nixos",
-        "padding": {
-          "top": 1,
-          "left": 1,
-          "right": 3
-        }
-      },
-      "display": {
-        "separator": " -> ",
-        "color": {
-          "keys": "2"
-        }
-      },
-      "modules": [
-        "title",
-        "separator",
-        "os",
-        "kernel",
-        "uptime",
-        "packages",
-        "shell",
-        "display",
-        "de",
-        "wm",
-        "theme",
-        "icons",
-        "terminal",
-        "cpu",
-        "gpu",
-        "memory",
-        "swap",
-        "disk",
-        "localip",
-        "locale"
-      ]
+      "logo": { "source": "nixos", "padding": { "top": 1, "left": 1, "right": 3 } },
+      "display": { "separator": " -> ", "color": { "keys": "4" } },
+      "modules": [ "title", "separator", "os", "kernel", "uptime", "packages", "shell", "display", "de", "wm", "theme", "icons", "terminal", "cpu", "gpu", "memory", "swap", "disk", "localip", "locale" ]
     }
   '';
 
-  # --- i3 Status Bar Configuration ---
-  environment.etc."xdg/i3status.conf".text = ''
-    general {
-      colors = true
-      interval = 5
-      color_good = "#FFFFFF"
-      color_degraded = "#888888"
-      color_bad = "#FF0000"
-      separator = " | "
-    }
-
-    order += "disk /"
-    order += "cpu_usage"
-    order += "memory"
-    order += "volume master"
-    order += "tztime local"
-
-    disk / {
-      format = "DISK %used / %total"
-    }
-
-    cpu_usage {
-      format = "CPU %usage"
-    }
-
-    memory {
-      format = "RAM %used / %total"
-      threshold_degraded = "10%"
-      format_degraded = "RAM LOW %available"
-    }
-
-    volume master {
-      format = "VOL %volume"
-      format_muted = "VOL MUTE"
-      device = "pulse"
-    }
-
-    tztime local {
-      format = "%Y-%m-%d %H:%M"
-    }
+  # --- Dunst (Notifications) ---
+  environment.etc."xdg/dunst/dunstrc".text = ''
+    [global]
+    monitor = 0
+    follow = keyboard
+    geometry = "400x5-30+30"
+    transparency = 10
+    corner_radius = 8
+    font = Monocraft 10
+    frame_color = "#363a4f"
+    separator_color = frame
+    progress_bar_corner_radius = 4
+    
+    [urgency_low]
+    background = "#24273a"
+    foreground = "#cad3f5"
+    timeout = 5
+    
+    [urgency_normal]
+    background = "#24273a"
+    foreground = "#cad3f5"
+    timeout = 10
+    
+    [urgency_critical]
+    background = "#ed8796"
+    foreground = "#24273a"
+    timeout = 0
   '';
 
-  # --- Tmux Configuration (Omarchy Style) ---
+  # --- Tmux ---
   environment.etc."tmux.conf".text = ''
-    # ============================================================
-    # General Settings
-    # ============================================================
     set -g prefix C-Space
     unbind C-b
     bind C-Space send-prefix
-
     set -g mouse on
-
     set -g base-index 1
     setw -g pane-base-index 1
     set -g renumber-windows on
-
     set -g default-terminal "tmux-256color"
     set -ga terminal-overrides ",xterm-256color:Tc"
-
-    # ============================================================
-    # Keybindings (Omarchy Manual)
-    # ============================================================
+    
     bind q source-file /etc/tmux.conf \; display "Config Reloaded!"
-
     bind v split-window -h -c "#{pane_current_path}"
     bind h split-window -v -c "#{pane_current_path}"
-
+    
     bind -n M-Left select-pane -L
     bind -n M-Right select-pane -R
     bind -n M-Up select-pane -U
     bind -n M-Down select-pane -D
-
+    
     bind -n M-1 select-window -t 1
     bind -n M-2 select-window -t 2
     bind -n M-3 select-window -t 3
@@ -463,129 +422,166 @@ in
     bind -n M-7 select-window -t 7
     bind -n M-8 select-window -t 8
     bind -n M-9 select-window -t 9
-
-    bind -n M-Left previous-window
-    bind -n M-Right next-window
-
-    bind -n M-Up switch-client -p
-    bind -n M-Down switch-client -n
-
-    bind c new-window -c "#{pane_current_path}"
-    bind k confirm-before -p "kill-window #W? (y/n)" kill-window
-    bind r command-prompt -I "#W" "rename-window -- '%%'"
-
-    bind C command-prompt -I "#S" "new-session -s '%%'"
-    bind K confirm-before -p "kill-session #S? (y/n)" kill-session
-    bind R command-prompt -I "#S" "rename-session -- '%%'"
-    bind s choose-session
-
-    # ============================================================
-    # Status Bar (Bottom, Minimal Black)
-    # ============================================================
+    
     set -g status-position bottom
-    set -g status-bg default
-    set -g status-fg white
+    set -g status-bg "#24273a"
+    set -g status-fg "#cad3f5"
     set -g status-justify centre
+    set -g status-left "#[fg=#8aadf4,bold] #S "
+    set -g status-right "#[fg=#a5adcb,bold] %Y-%m-%d  %H:%M "
+    set -g window-status-current-format "#[fg=#24273a,bg=#8aadf4,bold] #I:#W "
+    set -g window-status-format "#[fg=#a5adcb,dim] #I:#W "
+  '';
 
-    set -g status-left "#[fg=white,bold] #S "
-    set -g status-right "#[fg=white,bold] %Y-%m-%d  %H:%M "
-
-    set -g window-status-current-format "#[fg=black,bg=white,bold] #I:#W "
-    set -g window-status-format "#[fg=white,dim] #I:#W "
+  # --- Kitty Terminal ---
+  environment.etc."xdg/kitty/kitty.conf".text = ''
+    font_family Monocraft
+    font_size 10.0
+    cursor_shape beam
+    cursor_blink_interval 0.5
+    window_padding_width 6
+    
+    # Catppuccin Macchiato
+    foreground              #cad3f5
+    background              #24273a
+    selection_foreground    #24273a
+    selection_background    #8aadf4
+    url_color               #f5a97f
+    active_border_color     #8aadf4
+    inactive_border_color   #363a4f
+    
+    # Subtle transparency
+    background_opacity 0.95
+    
+    # Tab bar
+    tab_bar_edge top
+    tab_bar_style powerline
+    tab_powerline_style slanted
+    active_tab_foreground   #24273a
+    active_tab_background   #8aadf4
+    inactive_tab_foreground #a5adcb
+    inactive_tab_background #363a4f
   '';
 
   # --- i3 Window Manager Configuration ---
   environment.etc."xdg/i3/config".text = ''
     # ============================================================
-    # Variables
+    # Variables & Binaries
     # ============================================================
     set $mod Mod4
     set $term ${kittyBin} --single-instance -e ${tmuxBin} new -A -s main
     set $menu ${rofiMenuBin}
     set $browser ${firefoxBin}
-    set $files ${thunarBin}
-
+    set $files ${dolphinBin}
+    
     # ============================================================
-    # Fonts
+    # Appearance (Modernized i3)
     # ============================================================
     font pango:Monocraft 10
-
-    # ============================================================
-    # Window Rules & Appearance (Omarchy Minimal)
-    # ============================================================
-    floating_modifier $mod
-    default_border pixel 2
-    default_floating_border pixel 2
+    default_border pixel 3
+    default_floating_border pixel 3
     smart_borders on
-    gaps inner 0
+    gaps inner 8
     gaps outer 0
-
-    for_window [class="Pavucontrol"] floating enable
-    for_window [class="Flameshot"] floating enable
-    for_window [class="Nm-applet"] floating enable
-
+    
+    # Catppuccin Macchiato Palette
+    set $bg #24273a
+    set $fg #cad3f5
+    set $accent #8aadf4
+    set $inactive #363a4f
+    set $urgent #ed8796
+    
+    client.focused          $accent   $accent   $bg       $accent   $accent
+    client.focused_inactive $inactive $inactive $fg       $inactive $inactive
+    client.unfocused        $bg       $bg       #a5adcb   $bg       $bg
+    client.urgent           $urgent   $urgent   $fg       $urgent   $urgent
+    client.placeholder      $bg       $bg       $fg       $bg       $bg
+    
     # ============================================================
-    # Omarchy Core Binds
+    # Monitors
+    # ============================================================
+    exec --no-startup-id ${xrandrBin} --output DisplayPort-0 --mode 1920x1080 --rate 180.00 --primary --output HDMI-A-0 --mode 1920x1080 --rate 74.97 --right-of DisplayPort-0
+    
+    # ============================================================
+    # Window Rules & Workflow
+    # ============================================================
+    # Auto-center dialogs and floating windows
+    for_window [class="Pavucontrol"] floating enable, resize set 800 600, move position center
+    for_window [class="flameshot"] floating enable
+    for_window [title="Picture-in-Picture"] floating enable, sticky enable
+    for_window [window_role="pop-up"] floating enable, move position center
+    for_window [window_type="dialog"] floating enable, move position center
+    for_window [class="scratch_term"] floating enable, resize set 1000 600, move position center
+    for_window [class="scratch_python"] floating enable, resize set 800 600, move position center
+    for_window [class="scratch_btop"] floating enable, resize set 1000 600, move position center
+    
+    # ============================================================
+    # Core Binds (Omarchy QWERTZ Workflow)
     # ============================================================
     bindsym $mod+Return exec $term
     bindsym $mod+d exec --no-startup-id $menu
     bindsym $mod+Shift+Return exec $browser
-    bindsym $mod+Shift+f exec $files
-    bindsym $mod+Ctrl+t exec --no-startup-id ${kittyBin} -e ${btopBin}
-    bindsym $mod+Ctrl+a exec --no-startup-id ${pavucontrolBin}
-    bindsym $mod+Ctrl+w exec --no-startup-id ${kittyBin} -e ${nmtuiBin}
-
+    bindsym $mod+n exec $files
+    
     # Window Management
     bindsym $mod+w kill
-    bindsym $mod+q exec --no-startup-id ${xdotoolBin} getwindowfocus windowkill
-
-    bindsym Ctrl+Mod1+Delete exec i3-msg [class=".*"] kill
-    bindsym $mod+t floating toggle
+    
+    # Layouts
+    bindsym $mod+v split v
+    bindsym $mod+b split h
+    bindsym $mod+e layout toggle split
+    bindsym $mod+t layout tabbed
+    bindsym $mod+s layout stacking
     bindsym $mod+f fullscreen toggle
-    bindsym $mod+Mod1+f resize set 100 ppt 100 ppt
+    bindsym $mod+Shift+space floating toggle
+    bindsym $mod+space focus mode_toggle
     
-    # Omarchy Layout Binds
-    bindsym $mod+j split toggle
-    bindsym $mod+l layout toggle split tabbed stacking
-    bindsym $mod+p layout toggle split
-    bindsym $mod+g layout tabbed
+    # Focus (Vim keys + Arrows)
+    bindsym $mod+h focus left
+    bindsym $mod+j focus down
+    bindsym $mod+k focus up
+    bindsym $mod+l focus right
+    bindsym $mod+Left focus left
+    bindsym $mod+Down focus down
+    bindsym $mod+Up focus up
+    bindsym $mod+Right focus right
     
-    bindsym $mod+o sticky toggle; floating toggle
-
-    bindsym $mod+Escape exec "i3-nagbar -t warning -m 'System Menu' -B 'Lock' '${i3lockBin} -c 000000' -B 'Suspend' 'systemctl suspend' -B 'Reboot' 'systemctl reboot' -B 'Poweroff' 'systemctl poweroff'"
-    bindsym $mod+Ctrl+l exec --no-startup-id ${i3lockBin} -c 000000
-
-    # ============================================================
-    # Gaming Shortcuts
-    # ============================================================
-    bindsym $mod+Shift+g exec --no-startup-id ${gamescopeBin} -W 1920 -H 1080 -r 180 -- ${steamBin} -tenfoot
-
-    # ============================================================
-    # Workspace Bindings
-    # ============================================================
-    set $ws1 "1"
-    set $ws2 "2"
-    set $ws3 "3"
-    set $ws4 "4"
-    set $ws5 "5"
-    set $ws6 "6"
+    # Movement
+    bindsym $mod+Shift+h move left
+    bindsym $mod+Shift+j move down
+    bindsym $mod+Shift+k move up
+    bindsym $mod+Shift+l move right
+    
+    # Workspaces
+    set $ws1 "1: DEV"
+    set $ws2 "2: WEB"
+    set $ws3 "3: TERM"
+    set $ws4 "4: GAME"
+    set $ws5 "5: CHAT"
+    set $ws6 "6: MISC"
     set $ws7 "7"
     set $ws8 "8"
     set $ws9 "9"
     set $ws10 "10"
-
+    
     workspace $ws1 output DisplayPort-0
     workspace $ws2 output DisplayPort-0
     workspace $ws3 output DisplayPort-0
     workspace $ws4 output DisplayPort-0
     workspace $ws5 output DisplayPort-0
-
-    workspace $ws6 output HDMI-A-0
-    workspace $ws7 output HDMI-A-0
-    workspace $ws8 output HDMI-A-0
-    workspace $ws9 output HDMI-A-0
-    workspace $ws10 output HDMI-A-0
-
+    workspace $ws6 output DisplayPort-0
+    workspace $ws7 output DisplayPort-0
+    workspace $ws8 output DisplayPort-0
+    workspace $ws9 output DisplayPort-0
+    workspace $ws10 output DisplayPort-0
+    
+    # Auto-assign apps to workspaces
+    assign [class="firefox"] $ws2
+    assign [class="dolphin"] $ws3
+    assign [class="Steam"] $ws4
+    assign [class="discord"] $ws5
+    assign [class="Vesktop"] $ws5
+    
     bindsym $mod+1 workspace number $ws1
     bindsym $mod+2 workspace number $ws2
     bindsym $mod+3 workspace number $ws3
@@ -596,7 +592,7 @@ in
     bindsym $mod+8 workspace number $ws8
     bindsym $mod+9 workspace number $ws9
     bindsym $mod+0 workspace number $ws10
-
+    
     bindsym $mod+Shift+1 move container to workspace number $ws1
     bindsym $mod+Shift+2 move container to workspace number $ws2
     bindsym $mod+Shift+3 move container to workspace number $ws3
@@ -607,90 +603,62 @@ in
     bindsym $mod+Shift+8 move container to workspace number $ws8
     bindsym $mod+Shift+9 move container to workspace number $ws9
     bindsym $mod+Shift+0 move container to workspace number $ws10
-
+    
     bindsym $mod+Tab workspace next
     bindsym $mod+Shift+Tab workspace prev
-    bindsym $mod+Ctrl+Tab workspace back_and_forth
-
+    
     # ============================================================
-    # Window Movement & Focus
+    # Scratchpads & Rofi Utilities
     # ============================================================
-    bindsym $mod+Left focus left
-    bindsym $mod+Down focus down
-    bindsym $mod+Up focus up
-    bindsym $mod+Right focus right
-
-    bindsym $mod+Shift+Left move left
-    bindsym $mod+Shift+Down move down
-    bindsym $mod+Shift+Up move up
-    bindsym $mod+Shift+Right move right
-
-    bindsym Mod1+Tab focus right
-    bindsym Mod1+Shift+Tab focus left
-
+    # Terminal Scratchpad (Super+Z)
+    bindsym $mod+z exec --no-startup-id ${scratchTermBin}
+    
+    # Python REPL Scratchpad (Super+P)
+    bindsym $mod+p exec --no-startup-id ${scratchPythonBin}
+    
+    # System Monitor Scratchpad (Super+M)
+    bindsym $mod+m exec --no-startup-id ${scratchBtopBin}
+    
+    # Clipboard Manager (Super+Shift+D)
+    bindsym $mod+Shift+d exec --no-startup-id ${clipmenuBin}
+    
+    # Emoji Picker (Super+Slash)
+    bindsym $mod+slash exec --no-startup-id ${rofiEmojiBin}
+    
+    # Calculator (Super+Period)
+    bindsym $mod+period exec --no-startup-id ${rofiBin} -show calc -modi calc -plugin-path ${pkgs.rofi-calc}/lib/rofi
+    
+    # Power Menu (Super+Shift+P)
+    bindsym $mod+Shift+p exec --no-startup-id ${powerMenuBin}
+    
     # ============================================================
-    # Resizing (Omarchy Style)
+    # System & Media Keys
     # ============================================================
-    bindsym $mod+equal resize shrink width 10 px or 10 ppt
-    bindsym $mod+minus resize grow width 10 px or 10 ppt
-    bindsym $mod+Shift+equal resize grow height 10 px or 10 ppt
-    bindsym $mod+Shift+minus resize shrink height 10 px or 10 ppt
-
-    # ============================================================
-    # Scratchpad & Workflow
-    # ============================================================
-    bindsym $mod+s scratchpad show
-    bindsym $mod+Mod1+s move scratchpad
-
-    bindsym $mod+grave exec --no-startup-id ${kittyBin} --single-instance --name=dropdown -e ${tmuxBin} new -A -s main
-    for_window [class="dropdown"] floating enable, resize set 80 ppt 60 ppt, move position center
-
-    # ============================================================
-    # Notifications
-    # ============================================================
-    bindsym $mod+comma exec --no-startup-id ${dunstctlBin} close
-    bindsym $mod+Shift+comma exec --no-startup-id ${dunstctlBin} close-all
-    bindsym $mod+Ctrl+comma exec --no-startup-id ${dunstctlBin} toggle-pause
-
-    # ============================================================
-    # Media & Capture Keys
-    # ============================================================
+    bindsym $mod+Escape exec --no-startup-id ${powerMenuBin}
+    bindsym $mod+Ctrl+l exec --no-startup-id ${lockBin}
+    
     bindsym XF86AudioRaiseVolume exec --no-startup-id pactl set-sink-volume @DEFAULT_SINK@ +10%
     bindsym XF86AudioLowerVolume exec --no-startup-id pactl set-sink-volume @DEFAULT_SINK@ -10%
     bindsym XF86AudioMute exec --no-startup-id pactl set-sink-mute @DEFAULT_SINK@ toggle
-    bindsym XF86AudioMicMute exec --no-startup-id pactl set-source-mute @DEFAULT_SOURCE@ toggle
-
     bindsym XF86AudioPlay exec --no-startup-id ${playerctlBin} play-pause
     bindsym XF86AudioNext exec --no-startup-id ${playerctlBin} next
     bindsym XF86AudioPrev exec --no-startup-id ${playerctlBin} previous
-    bindsym XF86AudioStop exec --no-startup-id ${playerctlBin} stop
-
-    bindsym XF86MonBrightnessUp exec --no-startup-id ${brightnessctlBin} set +10%
-    bindsym XF86MonBrightnessDown exec --no-startup-id ${brightnessctlBin} set 10%-
-
+    
     bindsym Print exec ${flameshotBin} full -c
-    bindsym $mod+Ctrl+c exec ${flameshotBin} gui
-
+    bindsym $mod+Shift+s exec ${flameshotBin} gui
+    
     # ============================================================
     # Autostart
     # ============================================================
-    # Combined xrandr command for perfect 180Hz/75Hz sync on correct monitors
-    exec --no-startup-id ${xrandrBin} --output DisplayPort-0 --mode 1920x1080 --rate 180.00 --primary --output HDMI-A-0 --mode 1920x1080 --rate 74.97 --right-of DisplayPort-0
-    
     exec --no-startup-id ${dexBin} --autostart --environment i3
-    exec --no-startup-id ${xssLockBin} --transfer-sleep-lock -- ${i3lockBin} --nofork
+    exec --no-startup-id ${xssLockBin} --transfer-sleep-lock -- ${lockBin} --nofork
     exec --no-startup-id ${nmAppletBin}
-    exec --no-startup-id ${dunstBin}
-    exec --no-startup-id ${xsetrootBin} -solid black
+    exec --no-startup-id ${dunstBin} -config /etc/xdg/dunst/dunstrc
+    exec --no-startup-id ${setWallpaperBin}
     exec --no-startup-id ${picomBin} --config /etc/xdg/picom.conf
     exec --no-startup-id /run/current-system/sw/libexec/polkit-gnome-authentication-agent-1
-
-    # ============================================================
-    # Reload & Exit
-    # ============================================================
-    bindsym $mod+Shift+c reload
-    bindsym $mod+Shift+r restart
-
+    exec --no-startup-id clipmenud
+    
     # ============================================================
     # Status Bar
     # ============================================================
@@ -700,89 +668,63 @@ in
             font pango:Monocraft 10
             tray_output primary
             workspace_buttons yes
-
             colors {
-                    background #000000
-                    statusline #FFFFFF
-                    separator  #666666
-
-                    #                  border  backgr. text
-                    focused_workspace  #333333 #333333 #FFFFFF
-                    active_workspace   #1A1A1A #1A1A1A #FFFFFF
-                    inactive_workspace #000000 #000000 #888888
-                    urgent_workspace   #FF0000 #FF0000 #FFFFFF
-                    binding_mode       #FF0000 #FF0000 #FFFFFF
+                    background #24273a
+                    statusline #cad3f5
+                    separator  #363a4f
+                    focused_workspace  #8aadf4 #8aadf4 #24273a
+                    active_workspace   #363a4f #363a4f #cad3f5
+                    inactive_workspace #24273a #24273a #a5adcb
+                    urgent_workspace   #ed8796 #ed8796 #24273a
+                    binding_mode       #ed8796 #ed8796 #24273a
             }
     }
+  '';
 
-    # ============================================================
-    # Colors
-    # ============================================================
-    set $bg     #000000
-    set $fg     #FFFFFF
-    set $border #333333
-    set $inactive #1A1A1A
-    set $urgent #FF0000
-
-    client.focused          $border   $border   $fg       $border   $border
-    client.focused_inactive $inactive $inactive $fg       $inactive $inactive
-    client.unfocused        $bg       $bg       #888888   $bg       $bg
-    client.urgent           $urgent   $urgent   $fg       $urgent   $urgent
-    client.placeholder      $bg       $bg       $fg       $bg       $bg
+  # --- i3status Config ---
+  environment.etc."xdg/i3status.conf".text = ''
+    general {
+      colors = true
+      interval = 5
+      color_good = "#a6da95"
+      color_degraded = "#eed49f"
+      color_bad = "#ed8796"
+      separator = " | "
+    }
+    order += "disk /"
+    order += "cpu_usage"
+    order += "memory"
+    order += "volume master"
+    order += "tztime local"
+    disk / { format = "DISK %used / %total" }
+    cpu_usage { format = "CPU %usage" }
+    memory { format = "RAM %used / %total" threshold_degraded = "10%" format_degraded = "RAM LOW %available" }
+    volume master { format = "VOL %volume" format_muted = "VOL MUTE" device = "pulse" }
+    tztime local { format = "%Y-%m-%d %H:%M" }
   '';
 
   ############################################################
-  #
   # Audio (PipeWire)
-  #
   ############################################################
   security.rtkit.enable = true;
-
   services.pipewire = {
-    enable = true;
-    alsa.enable = true;
-    alsa.support32Bit = true;
-    pulse.enable = true;
-    wireplumber.enable = true;
+    enable = true; alsa.enable = true; alsa.support32Bit = true;
+    pulse.enable = true; wireplumber.enable = true;
   };
-
   services.pulseaudio.enable = false;
 
   ############################################################
-  #
-  # Bluetooth
-  #
+  # Bluetooth (Disabled per request)
   ############################################################
   hardware.bluetooth.enable = false;
 
   ############################################################
-  #
-  # Graphics & Gaming
-  #
-  ############################################################
-  hardware.graphics.enable = true;
-  hardware.graphics.enable32Bit = true;
-
-  hardware.graphics.extraPackages = with pkgs; [
-    libva-vdpau-driver
-    libvdpau-va-gl
-  ];
-
-  programs.steam.enable = true;
-
-  ############################################################
-  #
   # Fonts
-  #
   ############################################################
-  fonts.packages = with pkgs; [
-    monocraft
-  ];
+  fonts.packages = with pkgs; [ monocraft ];
 
   ############################################################
-  #
   # User Configuration
-  #
   ############################################################
   users.users."torbenn" = {
     isNormalUser = true;
@@ -791,108 +733,31 @@ in
   };
 
   ############################################################
-  #
   # System Packages
-  #
   ############################################################
   nixpkgs.config.allowUnfree = true;
 
   environment.systemPackages = with pkgs; [
     # --- Development ---
-    bat
-    bun
-    cargo
-    clang
-    cmake
-    curl
-    dotnet-sdk
-    eza
-    fd
-    firefox
-    gcc
-    git
-    jq
-    kitty
-    neovim
-    ninja
-    nodejs
-    python3
-    python3Packages.pip
-    ripgrep
-    rustc
-    tmux
-    unzip
-    nautilus
-    vscode
-    wget
-    yq
-    zip
+    bat bun cargo clang cmake curl dotnet-sdk eza fd firefox gcc git jq neovim ninja nodejs python3 python3Packages.pip ripgrep rustc tmux unzip vscode wget yq zip
 
     # --- CLI Utilities ---
-    btop
-    fastfetch
-    htop
-    libva-utils
-    lsof
-    mesa-demos
-    ncdu
-    pciutils
-    radeontop
-    strace
-    tree
-    usbutils
-    vulkan-tools
-    killall
+    btop fastfetch htop libva-utils lsof mesa-demos ncdu pciutils radeontop strace tree usbutils vulkan-tools killall scrot imagemagick xclip xsel
 
     # --- Gaming ---
-    corectrl
-    dxvk
-    gamescope
-    lutris
-    mangohud
-    protonup-qt
-    vinegar
-    wineWowPackages.stable # Ignore the warning, let it finish!
-    winetricks
-    noriskclient-launcher
+    corectrl dxvk gamescope lutris mangohud protonup-qt vinegar vkbasalt wineWowPackages.stable winetricks noriskclient-launcher
 
     # --- Desktop & GUI ---
-    adwaita-qt
-    brightnessctl
-    dex
-    discord
-    dunst
-    feh
-    flameshot
-    gnome-themes-extra
-    i3
-    i3lock
-    kitty
-    networkmanagerapplet
-    papirus-icon-theme
-    pavucontrol
-    picom
-    playerctl
-    polkit_gnome
-    rofi
-    spotify # Added standard Spotify
-    vesktop
-    xclip
-    xdotool
-    xsel
-    xss-lock
+    adwaita-qt brightnessctl clipmenu dex discord kdePackages.dolphin kdePackages.kio-extras kdePackages.dolphin-plugins dunst feh flameshot gnome-themes-extra i3 i3lock-color kitty networkmanagerapplet papirus-icon-theme pavucontrol picom playerctl polkit_gnome rofi rofi-emoji rofi-calc libqalculate spotify vesktop xdotool xss-lock
 
     # --- Custom Scripts ---
-    rofiMenuScript
+    rofiMenuScript lockScript scratchTermScript scratchPythonScript scratchBtopScript setWallpaperScript powerMenuScript
   ];
 
   ############################################################
-  #
   # Services & Portals
-  #
   ############################################################
   services.flatpak.enable = true;
-
   xdg.portal = {
     enable = true;
     extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
@@ -900,24 +765,14 @@ in
   };
 
   ############################################################
-  #
   # Nix Auto Garbage Collection
-  #
   ############################################################
-  nix.gc = {
-    automatic = true;
-    dates = "weekly";
-    options = "--delete-older-than 30d";
-  };
-
+  nix.gc = { automatic = true; dates = "weekly"; options = "--delete-older-than 30d"; };
   nix.settings.auto-optimise-store = true;
 
   ############################################################
-  #
   # System State
-  #
   ############################################################
   system.stateVersion = "26.05";
-
-  ## v3.6
+  ## v5.1
 }
