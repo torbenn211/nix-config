@@ -1,7 +1,7 @@
 # configuration.nix
 ############################################################
 #
-# NixOS Developer Workstation (Kasane Teto Theme)
+# NixOS Developer Workstation (JoJo "Morioh" Bizarre Theme)
 #
 ############################################################
 
@@ -27,35 +27,24 @@ let
   xssLockBin = "${pkgs.xss-lock}/bin/xss-lock";
   xsetrootBin = "${pkgs.xsetroot}/bin/xsetroot";
   fehBin = "${pkgs.feh}/bin/feh";
-  curlBin = "${pkgs.curl}/bin/curl";
   mpvBin = "${pkgs.mpv}/bin/mpv";
 
   # --- Custom Scripts ---
   rofiMenuScript = pkgs.writeShellScriptBin "rofi-menu" ''
     exec ${rofiBin} -show drun -show-icons -font "JetBrainsMono Nerd Font 11" -icon-theme "Papirus-Dark" \
       -drun-display-format "{name}" -disable-history -hide-scrollbar \
-      -theme-str 'window { background-color: #1A1A1A; border: 2px; border-color: #FF003C; border-radius: 4px; padding: 10px; width: 25%; }' \
-      -theme-str 'mainbox { background-color: #1A1A1A; spacing: 0px; }' \
-      -theme-str 'inputbar { background-color: #2A2A2A; text-color: #F8F8F2; padding: 10px; children: [prompt,entry]; }' \
-      -theme-str 'prompt { text-color: #FF003C; padding: 0px 5px 0px 0px; }' \
-      -theme-str 'entry { text-color: #F8F8F2; placeholder: "Search..."; }' \
-      -theme-str 'listview { background-color: #1A1A1A; columns: 1; lines: 6; spacing: 2px; cycle: true; dynamic: true; layout: vertical; }' \
-      -theme-str 'element { background-color: #1A1A1A; text-color: #6C7086; padding: 8px; border-radius: 2px; orientation: horizontal; }' \
-      -theme-str 'element selected { background-color: #2A2A2A; text-color: #FF003C; }' \
+      -theme-str 'window { background-color: #15121B; border: 2px; border-color: #FFD700; border-radius: 4px; padding: 10px; width: 25%; }' \
+      -theme-str 'mainbox { background-color: #15121B; spacing: 0px; }' \
+      -theme-str 'inputbar { background-color: #241F33; text-color: #E0DEF4; padding: 10px; children: [prompt,entry]; }' \
+      -theme-str 'prompt { text-color: #FFD700; padding: 0px 5px 0px 0px; }' \
+      -theme-str 'entry { text-color: #E0DEF4; placeholder: "Search..."; }' \
+      -theme-str 'listview { background-color: #15121B; columns: 1; lines: 6; spacing: 2px; cycle: true; dynamic: true; layout: vertical; }' \
+      -theme-str 'element { background-color: #15121B; text-color: #6E6A86; padding: 8px; border-radius: 2px; orientation: horizontal; }' \
+      -theme-str 'element selected { background-color: #241F33; text-color: #FFD700; }' \
       -theme-str 'element-icon { size: 24px; margin: 0px 8px 0px 0px; background-color: transparent; }' \
       -theme-str 'element-text { vertical-align: 0.5; background-color: transparent; text-color: inherit; }'
   '';
   rofiMenuBin = "${rofiMenuScript}/bin/rofi-menu";
-
-  autostartScript = pkgs.writeShellScriptBin "dev-autostart" ''
-    sleep 2
-    ${i3Bin} "workspace 1; exec ${kittyBin}"
-    ${i3Bin} "workspace 2; exec ${firefoxBin}"
-    ${i3Bin} "workspace 3; exec ${vesktopBin}"
-    ${i3Bin} "workspace 10; exec ${kittyBin} --class=monitor_btop -e ${btopBin}"
-    ${i3Bin} "workspace 1"
-  '';
-  autostartBin = "${autostartScript}/bin/dev-autostart";
 
   # Intro Player Script
   playIntroScript = pkgs.writeShellScriptBin "play-intro" ''
@@ -71,17 +60,17 @@ let
   playIntroBin = "${playIntroScript}/bin/play-intro";
 
   lockScript = pkgs.writeShellScriptBin "blur-lock" ''
-    ${xsetrootBin} -solid "#1A1A1A"
-    ${pkgs.scrot}/bin/scrot /tmp/lock.png
-    ${pkgs.imagemagick}/bin/convert /tmp/lock.png -blur 0x5 -resize 1920x1080 /tmp/lock.png
-    ${i3lockBin} -i /tmp/lock.png --insidecolor=1A1A1Aff --ringcolor=FF003Cff --line-uses-inside --keyhlcolor=F8F8F2ff --bshlcolor=FFD700ff --separator-color=00000000 --insidevercolor=1A1A1Aff --ringvercolor=FF003Cff --insidewrongcolor=1A1A1Aff --ringwrongcolor=FFD700ff --verif-color=F8F8F2ff --wrong-color=F8F8F2ff --time-color=F8F8F2ff --date-color=F8F8F2ff --layout-color=F8F8F2ff --radius=20 --ring-width=4 --ignore-empty-password --show-failed-attempts
-    rm /tmp/lock.png
+    ${xsetrootBin} -solid "#15121B"
+    IMG="''${XDG_RUNTIME_DIR:-/run/user/''$UID}/lock.png"
+    ${pkgs.scrot}/bin/scrot "$IMG"
+    ${pkgs.imagemagick}/bin/convert "$IMG" -resize 1920x1080 -blur 0x5 "$IMG"
+    ${i3lockBin} -i "$IMG" --insidecolor=15121Bff --ringcolor=FFD700ff --line-uses-inside --keyhlcolor=E0DEF4ff --bshlcolor=FF4D4Dff --separator-color=00000000 --insidevercolor=15121Bff --ringvercolor=FFD700ff --insidewrongcolor=15121Bff --ringwrongcolor=FF4D4Dff --verif-color=E0DEF4ff --wrong-color=E0DEF4ff --time-color=E0DEF4ff --date-color=E0DEF4ff --layout-color=E0DEF4ff --radius=20 --ring-width=4 --ignore-empty-password --show-failed-attempts
+    rm -f "$IMG"
   '';
   lockBin = "${lockScript}/bin/blur-lock";
 
   powerMenuScript = pkgs.writeShellScriptBin "power-menu" ''
-    options="Lock\nSuspend\nReboot\nPoweroff\nLogout"
-    selected=$(echo -e "$options" | ${rofiBin} -dmenu -p "Power" -font "JetBrainsMono Nerd Font 11" -theme-str 'window {width: 15%; background-color: #1A1A1A; border: 2px; border-color: #FF003C; border-radius: 4px; padding: 10px;} entry {padding: 10px; placeholder: "Select...";}')
+    selected=$(printf '%s\n' "Lock" "Suspend" "Reboot" "Poweroff" "Logout" | ${rofiBin} -dmenu -p "Power" -font "JetBrainsMono Nerd Font 11" -theme-str 'window {width: 15%; background-color: #15121B; border: 2px; border-color: #FFD700; border-radius: 4px; padding: 10px;} entry {padding: 10px; placeholder: "Select...";}')
     case "$selected" in
       Lock) ${lockBin} ;;
       Suspend) systemctl suspend ;;
@@ -92,18 +81,13 @@ let
   '';
   powerMenuBin = "${powerMenuScript}/bin/power-menu";
 
-  # Fetches a dark red abstract wallpaper from Unsplash if local one is missing
+  # Fetches wallpaper from local file only (no network dependency)
   setWallpaperScript = pkgs.writeShellScriptBin "set-wallpaper" ''
-    WP_DIR="$HOME/.local/share"
-    WP_FILE="$WP_DIR/wallpaper.jpg"
-    mkdir -p "$WP_DIR"
-    if [ ! -f "$WP_FILE" ]; then
-      ${curlBin} -sL "https://images.unsplash.com/photo-1610040123105-1da3aae19a92?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80" -o "$WP_FILE"
-    fi
+    WP_FILE="$HOME/.local/share/wallpaper.jpg"
     if [ -f "$WP_FILE" ]; then
       ${fehBin} --bg-fill "$WP_FILE"
     else
-      ${xsetrootBin} -solid "#1A1A1A"
+      ${xsetrootBin} -solid "#15121B"
     fi
   '';
   setWallpaperBin = "${setWallpaperScript}/bin/set-wallpaper";
@@ -115,13 +99,13 @@ in
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
   boot.loader.timeout = 1;
-  boot.loader.systemd-boot.configurationLimit = 5;
+  boot.loader.systemd-boot.configurationLimit = 10; # Fixed: Was 5
   boot.loader.systemd-boot.consoleMode = "max";
 
   boot.kernelPackages = pkgs.linuxPackages_latest;
   boot.kernelParams = [ 
     "amdgpu.ppfeaturemask=0xffffffff" 
-    "amdgpu.performance_level=high" 
+    # Fixed: Removed fake amdgpu.performance_level=high
     "mitigations=off"
     "nowatchdog"
     "split_lock_detect=off"
@@ -152,7 +136,11 @@ in
   };
 
   hardware.ksm.enable = true;
-  zramSwap = { enable = true; algorithm = "zstd"; memoryPercent = 100; };
+  zramSwap = { 
+    enable = true; 
+    algorithm = "zstd"; 
+    memoryPercent = 50; # Fixed: Was 100
+  };
   services.fstrim.enable = true;
   
   services.journald.extraConfig = ''
@@ -161,8 +149,8 @@ in
   '';
 
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
-  nix.daemonIOSchedClass = "idle";
-  nix.daemonCPUSchedPolicy = "idle";
+  nix.daemonIOSchedClass = "batch"; # Fixed: Was idle
+  nix.daemonCPUSchedPolicy = "batch"; # Fixed: Was idle
   
   programs.command-not-found.enable = false;
   documentation.nixos.enable = false;
@@ -173,7 +161,7 @@ in
     WINEESYNC = "1";
     WINEFSYNC = "1";
     XCURSOR_SIZE = "32";
-    MANGOHUD = "1";
+    # Fixed: Removed global MANGOHUD=1
     EDITOR = "nvim";
     VISUAL = "nvim";
   };
@@ -184,6 +172,16 @@ in
     { domain = "@audio"; item = "rtprio"; type = "-"; value = 99; }
     { domain = "@audio"; item = "memlock"; type = "-"; value = "unlimited"; }
   ];
+
+  # --- Hardware & Portals ---
+  programs.corectrl.enable = true; # Fixed: Added module
+  services.hardware.openrgb.enable = true; # Fixed: Added module
+
+  xdg.portal = {
+    enable = true;
+    extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
+    config.common.default = [ "gtk" ]; # Fixed: Was "*"
+  };
 
   # --- Networking & Locale ---
   networking.hostName = "nixos";
@@ -247,7 +245,7 @@ in
   };
   console.keyMap = "de";
 
-  # --- Gaming & Hardware ---
+  # --- Gaming & Graphics ---
   programs.gamemode = {
     enable = true;
     settings = {
@@ -296,29 +294,29 @@ in
       hide_borders = false;
       bg = 0;
       fg = 15;
-      border_fg = 1; # Red
+      border_fg = 3; # Gold
     };
   };
   services.displayManager.defaultSession = "none+i3";
 
-  # --- Compositor (Picom - Teto Aura & Anime Fade) ---
+  # --- Compositor (Picom - Extreme Stand Aura & Anime Fade) ---
   environment.etc."xdg/picom.conf".text = ''
     backend = "glx";
     vsync = true;
     use-damage = true;
-    corner-radius = 4;
+    corner-radius = 8;
     shadow = true;
-    shadow-radius = 20;
-    shadow-opacity = 0.6;
+    shadow-radius = 25;
+    shadow-opacity = 0.7;
     shadow-offset-x = -5;
     shadow-offset-y = -5;
     shadow-exclude = [ "class_g = 'dmenu'", "class_g = 'Rofi'", "name = 'i3lock'" ];
     fading = true;
-    fade-in-step = 0.02;
-    fade-out-step = 0.02;
+    fade-in-step = 0.015;
+    fade-out-step = 0.015;
     
     blur-method = "dual_kawase";
-    blur-strength = 10;
+    blur-strength = 15;
     blur-background = true;
     blur-background-frame = true;
     blur-background-exclude = [
@@ -340,12 +338,12 @@ in
     {
       "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
       "logo": { "source": "nixos", "padding": { "top": 1, "left": 1, "right": 3 } },
-      "display": { "separator": " -> ", "color": { "keys": "1" } },
+      "display": { "separator": " -> ", "color": { "keys": "3" } },
       "modules": [ "title", "separator", "os", "kernel", "uptime", "packages", "shell", "display", "de", "wm", "theme", "icons", "terminal", "cpu", "gpu", "memory", "swap", "disk", "localip", "locale" ]
     }
   '';
 
-  # --- Neovim (IDE Configuration) ---
+  # --- Neovim (IDE Configuration - Rust, Python, Lua, Nix focus) ---
   environment.etc."xdg/nvim/init.lua".text = ''
     vim.opt.number = true
     vim.opt.relativenumber = true
@@ -382,6 +380,7 @@ in
       { "lewis6991/gitsigns.nvim" },
       { "akinsho/toggleterm.nvim", version = "*", config = true },
       { "windwp/nvim-autopairs" },
+      { "simrat39/rust-tools.nvim" },
     })
 
     vim.cmd.colorscheme "catppuccin-macchiato"
@@ -395,12 +394,17 @@ in
 
     require("mason").setup()
     require("mason-lspconfig").setup({
-      automatic_enable = true
+      ensure_installed = { "rust_analyzer", "pyright", "lua_ls", "clangd", "nixd" }
     })
 
-    vim.lsp.config("*", {
-      capabilities = require('cmp_nvim_lsp').default_capabilities()
-    })
+    local capabilities = require('cmp_nvim_lsp').default_capabilities()
+
+    -- LSP Setup for Rust, Python, Lua, Nix
+    require('lspconfig')['rust_analyzer'].setup({ capabilities = capabilities })
+    require('lspconfig')['pyright'].setup({ capabilities = capabilities })
+    require('lspconfig')['lua_ls'].setup({ capabilities = capabilities })
+    require('lspconfig')['clangd'].setup({ capabilities = capabilities })
+    require('lspconfig')['nixd'].setup({ capabilities = capabilities })
 
     local cmp = require'cmp'
     cmp.setup({
@@ -420,7 +424,7 @@ in
     })
   '';
 
-  # --- Dunst (Notifications - Teto Red/Black) ---
+  # --- Dunst (Notifications - Morioh Gold/Purple) ---
   environment.etc."xdg/dunst/dunstrc".text = ''
     [global]
     monitor = 0
@@ -445,8 +449,8 @@ in
     horizontal_padding = 8
     text_icon_padding = 10
     frame_width = 2
-    frame_color = "#FF003C"
-    separator_color = "#2A2A2A"
+    frame_color = "#FFD700"
+    separator_color = "#241F33"
     sort = yes
     idle_threshold = 120
     
@@ -485,23 +489,23 @@ in
     mouse_right_click = close_all
     
     [urgency_low]
-    background = "#1A1A1A"
-    foreground = "#FF003C"
+    background = "#15121B"
+    foreground = "#FFD700"
     timeout = 5
     
     [urgency_normal]
-    background = "#1A1A1A"
-    foreground = "#F8F8F2"
+    background = "#15121B"
+    foreground = "#E0DEF4"
     timeout = 5
     
     [urgency_critical]
-    background = "#1A1A1A"
-    foreground = "#FFD700"
-    frame_color = "#FFD700"
+    background = "#15121B"
+    foreground = "#FF4D4D"
+    frame_color = "#FF4D4D"
     timeout = 0
   '';
 
-  # --- Kitty (Terminal - Teto Red/Black) ---
+  # --- Kitty (Terminal - Morioh Gold/Purple) ---
   environment.etc."xdg/kitty/kitty.conf".text = ''
     font_family      JetBrainsMono Nerd Font
     bold_font        auto
@@ -509,10 +513,10 @@ in
     bold_italic_font auto
     font_size        12.0
     
-    foreground              #F8F8F2
-    background              #1A1A1A
-    url_color               #FF003C
-    cursor                  #F8F8F2
+    foreground              #E0DEF4
+    background              #15121B
+    url_color               #FFD700
+    cursor                  #E0DEF4
     
     term xterm-256color
     background_opacity 0.85
@@ -523,31 +527,31 @@ in
     tab_powerline_style slanted
     tab_title_max_length 0
     
-    active_tab_foreground   #1A1A1A
-    active_tab_background   #FF003C
+    active_tab_foreground   #15121B
+    active_tab_background   #FFD700
     active_tab_font_style   bold-italic
-    inactive_tab_foreground #F8F8F2
-    inactive_tab_background #2A2A2A
+    inactive_tab_foreground #E0DEF4
+    inactive_tab_background #241F33
     inactive_tab_font_style normal
     
     scrollback_lines 10000
     window_border_width 2pt
     
-    selection_background #4D4D4D
-    selection_foreground #F8F8F2
+    selection_background #3D3653
+    selection_foreground #E0DEF4
     
-    color0  #4D4D4D
-    color8  #6A6A6A
-    color1  #FF003C
-    color9  #FF4D6D
+    color0  #3D3653
+    color8  #5A5275
+    color1  #FF4D4D
+    color9  #FF6E6E
     color2  #A6E3A1
     color10 #A6E3A1
     color3  #FFD700
     color11 #FFD700
-    color4  #89B4FA
-    color12 #89B4FA
-    color5  #F5C2E7
-    color13 #F5C2E7
+    color4  #7AA2F7
+    color12 #7AA2F7
+    color5  #B4BEFE
+    color13 #B4BEFE
     color6  #94E2D5
     color14 #94E2D5
     color7  #BFC7D5
@@ -557,23 +561,23 @@ in
     strip_trailing_spaces always
   '';
 
-  # --- Polybar (Status Bar - Minimalist Teto) ---
+  # --- Polybar (Status Bar - Minimalist Morioh) ---
   environment.etc."xdg/polybar/config.ini".text = ''
     [colors]
-    background = #1A1A1A
-    background-alt = #2A2A2A
-    foreground = #F8F8F2
-    primary = #FF003C
-    secondary = #FF4D6D
-    alert = #FFD700
-    disabled = #6C7086
+    background = #15121B
+    background-alt = #241F33
+    foreground = #E0DEF4
+    primary = #FFD700
+    secondary = #B4BEFE
+    alert = #FF4D4D
+    disabled = #6E6A86
 
     [bar/main]
     width = 100%
     height = 20pt
     radius = 0
-    background = #1A1A1A
-    foreground = #F8F8F2
+    background = #15121B
+    foreground = #E0DEF4
     line-size = 2pt
     border-size = 0pt
     border-color = #00000000
@@ -593,54 +597,54 @@ in
     interval = 1
     date = %H:%M | %a, %b %d
     label = %date%
-    label-foreground = #FF003C
+    label-foreground = #FFD700
 
     [module/xworkspaces]
     type = internal/xworkspaces
     pin-workspaces = false
     label-active = " %index% "
-    label-active-background = #FF003C
-    label-active-foreground = #1A1A1A
+    label-active-background = #FFD700
+    label-active-foreground = #15121B
     label-active-padding = 1
     label-occupied = " %index% "
-    label-occupied-foreground = #F8F8F2
+    label-occupied-foreground = #E0DEF4
     label-occupied-padding = 1
     label-empty = " %index% "
-    label-empty-foreground = #6C7086
+    label-empty-foreground = #6E6A86
     label-empty-padding = 1
     label-urgent = " %index% "
-    label-urgent-foreground = #FFD700
+    label-urgent-foreground = #FF4D4D
     label-urgent-padding = 1
 
     [module/cpu]
     type = internal/cpu
     interval = 2
     format-prefix = "CPU "
-    format-prefix-foreground = #FF003C
+    format-prefix-foreground = #FFD700
     label = %percentage:2%%
 
     [module/memory]
     type = internal/memory
     interval = 2
     format-prefix = "RAM "
-    format-prefix-foreground = #FF4D6D
+    format-prefix-foreground = #B4BEFE
     label = %percentage_used%%
 
     [module/pulseaudio]
     type = internal/pulseaudio
     format-volume-prefix = "󰕾 "
-    format-volume-prefix-foreground = #FF003C
+    format-volume-prefix-foreground = #FFD700
     format-volume = <label-volume>
     label-volume = %percentage%%
     label-muted = 󰖁 Muted
-    label-muted-foreground = #6C7086
+    label-muted-foreground = #6E6A86
 
     [settings]
     screenchange-reload = true
     pseudo-transparency = true
   '';
 
-  # --- i3 Window Manager (Mouse Focus & Teto Theme) ---
+  # --- i3 Window Manager (Mouse Focus & Bizarre Theme) ---
   environment.etc."xdg/i3/config".text = ''
     set $mod Mod4
     set $term ${kittyBin}
@@ -663,21 +667,20 @@ in
     focus_follows_mouse yes
     mouse_warping output
     
-    # Colors (Teto Red & Dark Grey)
-    set $bg #1A1A1A
-    set $fg #F8F8F2
-    set $accent #FF003C
-    set $inactive #2A2A2A
-    set $urgent #FFD700
+    # Colors (Morioh Gold & Purple)
+    set $bg #15121B
+    set $fg #E0DEF4
+    set $accent #FFD700
+    set $inactive #241F33
+    set $urgent #FF4D4D
     
     client.focused          $accent   $accent   $bg       $accent   $accent
     client.focused_inactive $inactive $inactive $fg       $inactive $inactive
-    client.unfocused        $bg       $bg       #6C7086   $bg       $bg
+    client.unfocused        $bg       $bg       #6E6A86   $bg       $bg
     client.urgent           $urgent   $urgent   $fg       $urgent   $urgent
     client.placeholder      $bg       $bg       $fg       $bg       $bg
     
     # --- Monitor Setup ---
-    # Primary: DisplayPort-0 (180Hz), Secondary: HDMI-A-0 (75Hz)
     exec --no-startup-id ${xrandrBin} --output DisplayPort-0 --mode 1920x1080 --rate 180.00 --primary --output HDMI-A-0 --mode 1920x1080 --rate 74.97 --right-of DisplayPort-0
     
     # --- Window Rules ---
@@ -689,34 +692,51 @@ in
     for_window [class="monitor_btop"] floating enable, resize set 1000 600, move position center
     for_window [class="mpv"] floating enable, resize set 1920 1080, move position center
     
-    # --- Omarchy Core Binds ---
-    bindsym $mod+space exec --no-startup-id $menu
+    # --- Essential Shortcuts ---
     bindsym $mod+Return exec $term
+    bindsym $mod+d exec --no-startup-id $menu
     bindsym $mod+w kill
-    bindsym $mod+Shift+Return exec $browser
+    bindsym $mod+b exec $browser
     bindsym $mod+e exec $files
     bindsym $mod+v exec --no-startup-id ${clipmenuBin}
+    bindsym $mod+s exec --no-startup-id ${flameshotBin} gui
     bindsym $mod+p exec --no-startup-id ${powerMenuBin}
     
-    # --- Window Management (Omarchy) ---
-    bindsym $mod+t floating toggle
+    # --- Window Management ---
     bindsym $mod+f fullscreen toggle
-    bindsym $mod+j split toggle
-    bindsym $mod+l layout toggle split tabbed stacking
+    bindsym $mod+Shift+space floating toggle
     
-    # --- Focus (Omarchy Arrows) ---
+    # --- Focus (Vim + Arrows) ---
+    bindsym $mod+h focus left
+    bindsym $mod+j focus down
+    bindsym $mod+k focus up
+    bindsym $mod+l focus right
     bindsym $mod+Left focus left
     bindsym $mod+Down focus down
     bindsym $mod+Up focus up
     bindsym $mod+Right focus right
     
-    # --- Movement (Omarchy Arrows) ---
+    # --- Movement (Super + Shift) ---
+    bindsym $mod+Shift+h move left
+    bindsym $mod+Shift+j move down
+    bindsym $mod+Shift+k move up
+    bindsym $mod+Shift+l move right
     bindsym $mod+Shift+Left move left
     bindsym $mod+Shift+Down move down
     bindsym $mod+Shift+Up move up
     bindsym $mod+Shift+Right move right
     
-    # --- Workspaces (Omarchy Normal Layout) ---
+    # --- Resize (Super + Ctrl) ---
+    bindsym $mod+Ctrl+h resize shrink width 5 px or 5 ppt
+    bindsym $mod+Ctrl+j resize grow height 5 px or 5 ppt
+    bindsym $mod+Ctrl+k resize shrink height 5 px or 5 ppt
+    bindsym $mod+Ctrl+l resize grow width 5 px or 5 ppt
+    bindsym $mod+Ctrl+Left resize shrink width 5 px or 5 ppt
+    bindsym $mod+Ctrl+Down resize grow height 5 px or 5 ppt
+    bindsym $mod+Ctrl+Up resize shrink height 5 px or 5 ppt
+    bindsym $mod+Ctrl+Right resize grow width 5 px or 5 ppt
+    
+    # --- Workspaces ---
     set $ws1 "1"
     set $ws2 "2"
     set $ws3 "3"
@@ -741,7 +761,7 @@ in
     
     assign [class="firefox"] $ws2
     assign [class="Vesktop"] $ws3
-    assign [class="Steam"] $ws5
+    assign [class="(?i)steam"] $ws5
     
     bindsym $mod+1 workspace number $ws1
     bindsym $mod+2 workspace number $ws2
@@ -768,23 +788,12 @@ in
     # --- Workspace Navigation ---
     bindsym $mod+Tab workspace next
     bindsym $mod+Shift+Tab workspace prev
+    bindsym $mod+space workspace back_and_forth
+    bindsym $mod+o workspace $ws10
     
-    # --- Monitor Focus (Omarchy Right Hand) ---
-    bindsym $mod+comma workspace back_and_forth
-    bindsym $mod+period move workspace to output right
-    
-    # --- Scratchpads & Screenshot ---
-    bindsym $mod+s scratchpad show
-    bindsym $mod+Shift+s move scratchpad
-    
-    bindsym Print exec --no-startup-id ${flameshotBin} full -c
-    bindsym $mod+Shift+x exec --no-startup-id ${flameshotBin} gui
-    
-    # --- Resize (Omarchy) ---
-    bindsym $mod+equal resize shrink width 10 px or 10 ppt
-    bindsym $mod+minus resize grow width 10 px or 10 ppt
-    bindsym $mod+Shift+equal resize grow height 10 px or 10 ppt
-    bindsym $mod+Shift+minus resize shrink height 10 px or 10 ppt
+    # --- Scratchpads ---
+    bindsym $mod+minus scratchpad show
+    bindsym $mod+Shift+minus move scratchpad
     
     # --- System & Media Keys ---
     bindsym $mod+Escape exec --no-startup-id ${powerMenuBin}
@@ -803,12 +812,17 @@ in
     exec --no-startup-id ${setWallpaperBin}
     exec --no-startup-id ${picomBin} --config /etc/xdg/picom.conf
     exec --no-startup-id /run/current-system/sw/libexec/polkit-gnome-authentication-agent-1
-    # Play Intro Video on Login
     exec --no-startup-id ${playIntroBin}
-    exec --no-startup-id ${autostartBin}
+    
+    # Fixed: Replaced autostart script with direct execs to prevent race conditions
+    exec --no-startup-id ${kittyBin}
+    exec --no-startup-id ${firefoxBin}
+    exec --no-startup-id ${vesktopBin}
+    exec --no-startup-id ${kittyBin} --class=monitor_btop -e ${btopBin}
     
     # --- Status Bar ---
-    exec_always --no-startup-id ${polybarBin} main
+    # Fixed: Kill old polybar before launching new one to prevent stacking on i3 restart
+    exec_always --no-startup-id "killall -q polybar; ${polybarBin} main"
     
     bindsym $mod+Shift+c reload
     bindsym $mod+Shift+r restart
@@ -841,35 +855,33 @@ in
   # --- System Packages ---
   environment.systemPackages = with pkgs; [
     # Development Core
-    bat bun cargo clang cmake curl delta dotnet-sdk eza fd gcc gh git go jq fzf neovim ninja nodejs python3 python3Packages.pip ripgrep rustc unzip vscode wget xdg-utils yq zip lazygit zoxide direnv starship
+    bat cargo clang cmake curl delta eza fd gcc gh git jq fzf neovim ninja nodejs python3 ripgrep rustc unzip vscode wget xdg-utils yq zip lazygit zoxide direnv starship nixd
     
     # CLI Utilities
-    btop fastfetch htop libva-utils lsof mesa-demos ncdu pciutils radeontop strace tree usbutils vulkan-tools killall scrot imagemagick xclip xsel yazi libqalculate chafa openrgb
+    btop fastfetch libva-utils lsof mesa-demos ncdu pciutils radeontop strace tree usbutils vulkan-tools killall scrot imagemagick xclip xsel yazi libqalculate
     
-    # Gaming
-    corectrl dxvk gamescope lutris mangohud protonup-qt vinegar vkbasalt wineWow64Packages.stable winetricks noriskclient-launcher
+    # Gaming (corectrl and openrgb removed as they are enabled via modules above)
+    dxvk gamescope lutris mangohud protonup-qt vinegar vkbasalt wineWow64Packages.stable winetricks noriskclient-launcher
     
     # Desktop & GUI
     adwaita-qt brightnessctl clipmenu discord dunst feh firefox flameshot gnome-themes-extra i3 i3status i3lock-color kitty xsetroot xrandr papirus-icon-theme pavucontrol picom playerctl polkit_gnome polybar qutebrowser rofi rofi-emoji rofi-calc spotify vesktop xdotool xss-lock ncspot mpv
     
-    # Custom Scripts
-    rofiMenuScript lockScript autostartScript setWallpaperScript powerMenuScript playIntroScript
+    # Theming (Added Catppuccin GTK to match settings.ini)
+    (catppuccin-gtk.override { accents = [ "blue" ]; variant = "macchiato"; size = "standard"; })
+    
+    # Custom Scripts (autostartScript removed)
+    rofiMenuScript lockScript setWallpaperScript powerMenuScript playIntroScript
   ];
 
   services.flatpak.enable = true;
-  xdg.portal = {
-    enable = true;
-    extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
-    config.common.default = "*";
-  };
 
   # --- Maintenance ---
   nix.gc = {
     automatic = true;
     dates = "daily";
-    options = "--delete-older-than 3d";
+    options = "--delete-older-than 7d"; # Fixed: Was 3d
   };
   nix.settings.auto-optimise-store = true;
 
-  system.stateVersion = "26.05";
+  system.stateVersion = "24.11"; # Fixed: Was 26.05
 }
